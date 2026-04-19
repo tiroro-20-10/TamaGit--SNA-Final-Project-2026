@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from .models import PetState
+from models import PetState
 
 
 class Storage:

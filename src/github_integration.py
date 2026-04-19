@@ -1,4 +1,4 @@
-from .models import PetState
+from models import PetState
 
 
 class GitHubEvents:

@@ -1,101 +1,93 @@
-import sys
 from argparse import ArgumentParser
-
-from .models import PetState
-from .storage import Storage
-from .github_integration import GitHubEvents
-from .ui import get_pet_ascii
-
-
-# Простые ANSI-цвета (работают в любом терминале)
-RESET = "\033[0m"
-BOLD = "\033[1m"
-CYAN = "\033[36m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-MAGENTA = "\033[35m"
-BLUE = "\033[34m"
-RED = "\033[31m"
-
+from rich.console import Console
+from models import PetState
+from storage import Storage
+from github_integration import GitHubEvents
+from ui import show_status, console
 
 def main():
-    parser = ArgumentParser(prog="gittama", description="🐱 GitTama — терминальный тамагочи")
-    subparsers = parser.add_subparsers(dest="command", help="Доступные команды")
+    parser = ArgumentParser(
+        prog="gittama",
+        description="GitTama — Terminal Tamagotchi for GitHub and DevOps habits"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    subparsers.add_parser("status", help="Показать состояние")
-    subparsers.add_parser("log", help="Показать историю событий")
+    subparsers.add_parser("status", help="Show pet status and daily quest")
+    subparsers.add_parser("log", help="Show event history")
+    subparsers.add_parser("quest", help="Complete today's daily quest")
 
-    feed = subparsers.add_parser("feed", help="Покормить")
-    feed.add_argument("-a", "--amount", type=int, default=15)
+    feed = subparsers.add_parser("feed", help="Feed the pet")
+    feed.add_argument("-a", "--amount", type=int, default=20, help="Amount to feed")
 
-    play = subparsers.add_parser("play", help="Поиграть")
-    play.add_argument("-a", "--amount", type=int, default=15)
+    play = subparsers.add_parser("play", help="Play with the pet")
+    play.add_argument("-a", "--amount", type=int, default=15, help="Amount to play")
 
-    subparsers.add_parser("sleep", help="Поспать")
-    subparsers.add_parser("clean", help="Почистить")
+    subparsers.add_parser("sleep", help="Put the pet to sleep")
+    subparsers.add_parser("clean", help="Clean the repository")
 
-    event_parser = subparsers.add_parser("event", help="GitHub-событие")
-    event_parser.add_argument("type", choices=["commit", "pr", "issue", "ci_success"])
+    event_parser = subparsers.add_parser("event", help="Simulate GitHub event")
+    event_parser.add_argument(
+        "type",
+        choices=["commit", "pr", "issue", "ci_success"],
+        help="Type of GitHub event"
+    )
 
     args = parser.parse_args()
 
     storage = Storage()
-    pet = storage.load()
+    pet: PetState = storage.load()
     pet.update_from_time()
 
-    if args.command == "status" or args.command is None:
-        print(get_pet_ascii(pet))
-        print(f"{BOLD}🐱 GitTama{RESET}")
-        print(f"Имя:        {pet.name}")
-        print(f"Голод:      {RED}{pet.hunger:3}{RESET}  (0 = сыт, 100 = голодный)")
-        print(f"Энергия:    {YELLOW}{pet.energy:3}{RESET}  (0 = бодрый, 100 = усталый)")
-        print(f"Настроение: {MAGENTA}{pet.mood:3}{RESET}  (0 = счастливый, 100 = грустный)")
-        print(f"Здоровье:   {GREEN}{pet.health:3}{RESET}  (0 = плохо, 100 = отлично)")
+    if args.command in (None, "status"):
+        pet.get_daily_quest()
+        show_status(pet)
 
-        if pet.achievements:
-            print(f"\n{YELLOW}🏆 Достижения:{RESET}")
-            for ach in pet.achievements:
-                print(f"   • {ach}")
-
-        if pet.events_log:
-            print(f"\n{BOLD}📜 Последние события:{RESET}")
-            for entry in pet.events_log[-5:]:
-                print(f"   {entry}")
-
-    elif args.command == "log":
-        print(f"{BOLD}📜 Полная история событий:{RESET}")
-        for entry in pet.events_log or ["Пока ничего не происходило..."]:
-            print(entry)
+    elif args.command == "quest":
+        pet.complete_quest()
+        console.print("[bold green]Quest completed successfully![/bold green]")
+        show_status(pet)
 
     elif args.command == "feed":
         pet.hunger = max(0, pet.hunger - args.amount)
-        pet.add_event(f"🍎 Покормили на {args.amount}")
-        print(f"{GREEN}🍎 Покормили на {args.amount}!{RESET}")
+        pet.add_event(f"Fed pet (+{args.amount} hunger)")
+        console.print("[green]Pet has been fed![/green]")
+        show_status(pet)
 
     elif args.command == "play":
         pet.mood = max(0, pet.mood - args.amount)
         pet.energy = max(0, pet.energy - 5)
-        pet.add_event("🎾 Поиграли")
-        print(f"{CYAN}🎾 Поиграли!{RESET}")
+        pet.add_event("Played with pet")
+        console.print("[cyan]Played with pet! Mood improved[/cyan]")
+        show_status(pet)
 
     elif args.command == "sleep":
         pet.energy = max(0, pet.energy - 40)
-        pet.add_event("😴 Питомец выспался")
-        print(f"{BLUE}😴 Питомец отлично выспался!{RESET}")
+        pet.add_event("Pet slept")
+        console.print("[blue]Pet had a good rest![/blue]")
+        show_status(pet)
 
     elif args.command == "clean":
-        pet.health = min(100, pet.health + 10)
-        pet.add_event("🧹 Репозиторий почищен")
-        print(f"{GREEN}🧹 Репозиторий почищен!{RESET}")
+        pet.health = min(100, pet.health + 15)
+        pet.add_event("Repository cleaned")
+        console.print("[green]Repository is clean now![/green]")
+        show_status(pet)
 
     elif args.command == "event":
         message = GitHubEvents.apply_event(pet, args.type)
         pet.add_event(message)
         pet.check_achievements()
-        print(f"{MAGENTA}📡 {message}{RESET}")
+        console.print(f"[magenta]GitHub event processed: {message}[/magenta]")
+        show_status(pet)
+
+    elif args.command == "log":
+        console.print("[bold]Event History:[/bold]")
+        if not pet.events_log:
+            console.print("[dim]No events yet...[/dim]")
+        else:
+            for entry in pet.events_log:
+                console.print(entry)
 
     storage.save(pet)
-
 
 if __name__ == "__main__":
     main()
