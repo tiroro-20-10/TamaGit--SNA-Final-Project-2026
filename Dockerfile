@@ -2,14 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Копируем только код проекта
-COPY src/ /app/src/
+COPY pyproject.toml .
+COPY src/ ./src/
 
-# Устанавливаем зависимости
-RUN pip install --no-cache-dir pydantic
+RUN pip install --no-cache-dir -e .
 
-# Чтобы Python видел модули
-ENV PYTHONPATH=/app
-
-# Запуск по умолчанию
-ENTRYPOINT ["python", "-m", "src.main"]
+CMD ["gittama", "status"]
