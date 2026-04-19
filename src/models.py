@@ -5,7 +5,6 @@ from typing import Dict, Any, List
 
 @dataclass
 class PetState:
-    """Состояние питомца"""
     name: str = "GitTama"
     hunger: int = 50
     energy: int = 50
@@ -33,7 +32,6 @@ class PetState:
         return cls(**data)
 
     def update_from_time(self):
-        """Автоматическая деградация"""
         now = datetime.now()
         last = datetime.fromisoformat(self.last_updated)
         minutes_passed = (now - last).total_seconds() / 60
@@ -50,7 +48,6 @@ class PetState:
         self.last_updated = now.isoformat()
 
     def add_event(self, message: str):
-        """Добавляем событие в лог (максимум 10 последних)"""
         timestamp = datetime.now().strftime("%H:%M")
         entry = f"[{timestamp}] {message}"
         self.events_log.append(entry)
@@ -58,7 +55,6 @@ class PetState:
             self.events_log.pop(0)
 
     def check_achievements(self):
-        """Проверяем достижения"""
         new_ach = []
         if "First Commit" not in self.achievements and any("коммит" in log.lower() for log in self.events_log):
             new_ach.append("First Commit")
@@ -72,4 +68,4 @@ class PetState:
         if new_ach:
             self.achievements.extend(new_ach)
             for a in new_ach:
-                self.add_event(f"🏆 Получено достижение: {a}")
+                self.add_event(f"Get achievement: {a}")
