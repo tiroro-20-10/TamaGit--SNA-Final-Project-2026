@@ -4,4 +4,4 @@ services:
     volumes:
       - ~/.gittama:/root/.gittama
     command: status
-    # Чтобы запускать другие команды: docker compose run --rm gittama feed
+    # Docker compose run --rm gittama feed
