@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "gittama"
 version = "0.1.0"
-description = "Терминальный тамагочи для GitHub"
-authors = ["Ты <you@example.com>"]
+description = "Terminal tamagotchi for GitHub"
+authors = ["You <you@example.com>"]
 readme = "README.md"
 packages = [{include = "src"}]
 
