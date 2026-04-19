@@ -1,10 +1,10 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+COPY src/ /app/src/
 
-COPY pyproject.toml .
-COPY src/ ./src/
+RUN pip install --no-cache-dir pydantic
 
-RUN pip install --no-cache-dir -e .
+ENV PYTHONPATH=/app
 
-CMD ["gittama", "status"]
+ENTRYPOINT ["python", "-m", "src.main"]

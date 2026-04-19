@@ -2,5 +2,6 @@ services:
   gittama:
     build: .
     volumes:
-      - ./state:/root/.gittama
-    command: ["gittama", "status"]
+      - ~/.gittama:/root/.gittama
+    command: status
+    # Docker compose run --rm gittama feed

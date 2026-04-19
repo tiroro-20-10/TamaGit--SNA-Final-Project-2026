@@ -1,19 +1,19 @@
-[build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "gittama"
 version = "0.1.0"
-description = "GitTama — Terminal Tamagotchi for GitHub and DevOps habits"
-authors = [{ name = "Your Name" }]
-requires-python = ">=3.10"
-dependencies = [
-    "rich>=13.0.0",
-]
+description = "Terminal tamagotchi for GitHub"
+authors = ["You <you@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
 
-[project.scripts]
-gittama = "main:main"
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.0"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+black = "^24.0"
+ruff = "^0.1"
+
+[tool.poetry.scripts]
+gittama = "src.main:main"

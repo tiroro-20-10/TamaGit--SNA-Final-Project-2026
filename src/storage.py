@@ -4,7 +4,6 @@ from models import PetState
 
 
 class Storage:
-    """Сохранение состояния питомца в JSON"""
     def __init__(self, filepath: str = "~/.gittama/state.json"):
         self.filepath = Path(filepath).expanduser()
         self.filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -13,11 +12,11 @@ class Storage:
         data = pet.to_dict()
         with open(self.filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"✅ Сохранено в {self.filepath}")
+        print(f"Save in {self.filepath}")
 
     def load(self) -> PetState:
         if not self.filepath.exists():
-            print("🆕 Создаём нового питомца...")
+            print("Create a new pet...")
             pet = PetState()
             self.save(pet)
             return pet
