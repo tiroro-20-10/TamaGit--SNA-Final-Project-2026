@@ -15,4 +15,4 @@ def test_storage_roundtrip():
         assert loaded.name == "TestTama"
         assert loaded.hunger == 30
         assert loaded.mood == 20
-        print("✅ Тест storage прошёл успешно!")
+        print("The storage test was successful!")
