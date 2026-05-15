@@ -1,7 +1,13 @@
 services:
   gittama:
-    build: .
+    build:
+      context: .
+      target: runtime
+    working_dir: /workspace
+    environment:
+      PYTHONPATH: /workspace:/app
     volumes:
       - ~/.gittama:/root/.gittama
+      - .:/workspace
     command: status
-    # Docker compose run --rm gittama feed
+    # docker compose run --rm gittama scan

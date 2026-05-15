@@ -1,24 +1,114 @@
-# GitTama — Terminal Tamagotchi for GitHub
+# GitTama - Terminal Tamagotchi for Git and GitHub habits
 
-**Gamified terminal assistant** that turns your GitHub and DevOps workflow into a daily ritual.
+GitTama is a small CLI pet that reacts to repository activity. It keeps a local
+JSON state, changes mood over time, rewards useful actions, and can scan the
+current git repository.
 
-Your pet reacts to commits, PRs, issues, and CI events — motivating you to keep the repository alive and clean.
+## Current MVP
 
-## Features
+- Pet state: hunger, energy, mood, health
+- Persistent JSON state in `~/.gittama/state.json`
+- Time-based decay between launches
+- Basic CLI actions: `status`, `feed`, `play`, `sleep`, `clean`, `log`
+- Simulated GitHub events for demos: `commit`, `pr`, `issue`, `issue_closed`, `ci_success`
+- Local git scan: branch, dirty worktree, last commit, unpushed/unpulled commits
+- Docker and Docker Compose support
 
-- Daily quests
-- 6 achievements
-- Time-based state decay (pet lives even when the app is closed)
-- Beautiful Rich TUI with ASCII emotions
-- Persistent state (JSON)
-- Mock GitHub events + easy to extend to real GitHub API
-- Docker support
+## Requirements
 
-## Quick Start
+- Python 3.10+
+- Git installed and available in `PATH` for `gittama scan`
+- Docker Desktop or Docker Engine, optional
+
+Do not commit a virtual environment. Create it locally on each machine.
+
+## Local Setup
+
+### Windows PowerShell
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+pip install -e .
+gittama status
+```
+
+If `py` is not available, use the full path to your Python executable or install
+Python from python.org.
+
+### macOS / Linux
 
 ```bash
-# 1. Install
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
 pip install -e .
-
-# 2. Run
 gittama status
+```
+
+## Commands
+
+```bash
+gittama status
+gittama feed --amount 20
+gittama play
+gittama sleep
+gittama clean
+gittama log
+gittama scan
+gittama scan /path/to/repository
+gittama mock-event commit
+gittama mock-event pr
+gittama mock-event issue_closed
+gittama mock-event ci_success
+```
+
+`mock-event` does not check real Git history. It manually simulates a GitHub
+event for demos. Use `gittama scan` to inspect the real local repository.
+
+## Docker
+
+```bash
+docker compose build
+docker compose run --rm gittama status
+docker compose run --rm gittama scan
+docker compose run --rm gittama mock-event commit
+```
+
+The Compose setup mounts the current project to `/workspace` and stores pet
+state in `~/.gittama`.
+
+For temporary runs or CI, override the state file:
+
+```bash
+GITTAMA_STATE_PATH=.tmp-gittama/state.json gittama status
+```
+
+PowerShell equivalent:
+
+```powershell
+$env:GITTAMA_STATE_PATH = ".tmp-gittama/state.json"
+gittama status
+```
+
+
+## Project Structure
+
+```text
+src/
+  main.py                CLI entry point
+  models.py              Pet state model
+  pet_engine.py          Pet rules and reactions
+  git_integration.py     Local git scanner
+  github_integration.py  Mock GitHub event adapter
+  storage.py             JSON persistence
+  ui.py                  ASCII pet output
+```
+
+## Next Steps
+
+- Add tests for `pet_engine`, `git_integration`, and CLI behavior
+- Add daily quests
+- Add real GitHub API sync via `GITHUB_TOKEN` and `GITHUB_REPO`
+- Add GitHub Actions for linting and tests

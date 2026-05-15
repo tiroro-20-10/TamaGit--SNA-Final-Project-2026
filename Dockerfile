@@ -1,10 +1,24 @@
-FROM python:3.11-slim
+FROM python:3.11-bookworm AS runtime
 
 WORKDIR /app
-COPY src/ /app/src/
+RUN apt-get update -o Acquire::Retries=3 \
+    && apt-get install -y --no-install-recommends -o Acquire::Retries=3 git \
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --global --add safe.directory /workspace
 
-RUN pip install --no-cache-dir pydantic
+COPY pyproject.toml README.md /app/
+COPY src/ /app/src/
 
 ENV PYTHONPATH=/app
 
 ENTRYPOINT ["python", "-m", "src.main"]
+
+
+FROM runtime AS test
+
+COPY tests/ /app/tests/
+
+RUN pip install --no-cache-dir pytest
+
+ENTRYPOINT ["python", "-m", "pytest"]
+CMD ["-q"]

@@ -1,9 +1,18 @@
-import sys
 from argparse import ArgumentParser
+from pathlib import Path
 
-from .models import PetState
-from .storage import Storage
+from .git_integration import GitSnapshot, collect_git_snapshot
 from .github_integration import GitHubEvents
+from .pet_engine import (
+    apply_git_snapshot,
+    clean,
+    feed,
+    play,
+    sleep,
+    summarize_messages,
+    update_from_time,
+)
+from .storage import Storage
 from .ui import get_pet_ascii
 
 
@@ -17,83 +26,114 @@ BLUE = "\033[34m"
 RED = "\033[31m"
 
 
-def main():
-    parser = ArgumentParser(prog="gittama", description="GitTama terminal tamagotchi")
-    subparsers = parser.add_subparsers(dest="command", help="Available Commands")
-
-    subparsers.add_parser("status", help="Show the status")
-    subparsers.add_parser("log", help="Show event history")
-
-    feed = subparsers.add_parser("feed", help="To feed")
-    feed.add_argument("-a", "--amount", type=int, default=15)
-
-    play = subparsers.add_parser("play", help="To play")
-    play.add_argument("-a", "--amount", type=int, default=15)
-
-    subparsers.add_parser("sleep", help="Sleep")
-    subparsers.add_parser("clean", help="Clean")
-
-    event_parser = subparsers.add_parser("event", help="GitHub-event")
-    event_parser.add_argument("type", choices=["commit", "pr", "issue", "ci_success"])
-
+def main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
 
     storage = Storage()
     pet = storage.load()
-    pet.update_from_time()
+    update_from_time(pet)
 
-    if args.command == "status" or args.command is None:
-        print(get_pet_ascii(pet))
-        print(f"{BOLD} GitTama{RESET}")
-        print(f"Name:{pet.name}")
-        print(f"Hunger:{RED}{pet.hunger:3}{RESET} (0 = full, 100 = hungry)")
-        print(f"Energy:{YELLOW}{pet.energy:3}{RESET} (0 = cheerful, 100 = tired)")
-        print(f"Mood:{MAGENTA}{pet.mood:3}{RESET} (0 = happy, 100 = sad)")
-        print(f"Health:{GREEN}{pet.health:3}{RESET} (0 = bad, 100 = excellent)")
+    command = args.command or "status"
 
-        if pet.achievements:
-            print(f"\n{YELLOW} Achievements:{RESET}")
-            for ach in pet.achievements:
-                print(f"   • {ach}")
+    if command == "status":
+        print_status(pet)
 
-        if pet.events_log:
-            print(f"\n{BOLD} Recent events:{RESET}")
-            for entry in pet.events_log[-5:]:
-                print(f"   {entry}")
-
-    elif args.command == "log":
-        print(f"{BOLD} Full event history:{RESET}")
+    elif command == "log":
+        print(f"{BOLD}Full event history:{RESET}")
         for entry in pet.events_log or ["Nothing has happened yet..."]:
             print(entry)
 
-    elif args.command == "feed":
-        pet.hunger = max(0, pet.hunger - args.amount)
-        pet.add_event (f "  Fed {args.amount}")
-        print (f " {GREEN} Fed {args.amount}!{RESET}")
+    elif command == "feed":
+        message = feed(pet, args.amount)
+        print(f"{GREEN}{message}!{RESET}")
 
-    elif args.command == "play":
-        pet.mood = max(0, pet.mood - args.amount)
-        pet.energy = max(0, pet.energy - 5)
-        pet.add_event("Played")
-        print(f"{CYAN} Let's play!{RESET}")
+    elif command == "play":
+        message = play(pet, args.amount)
+        print(f"{CYAN}{message}!{RESET}")
 
-    elif args.command == "sleep":
-        pet.energy = max(0, pet.energy - 40)
-        pet.add_event("The pet slept well")
-        print(f"{BLUE}The pet slept well!{RESET}")
+    elif command == "sleep":
+        message = sleep(pet)
+        print(f"{BLUE}{message}!{RESET}")
 
-    elif args.command == "clean":
-        pet.health = min(100, pet.health + 10)
-        pet.add_event("Repository cleaned")
-        print(f"{GREEN} Repository cleaned!{RESET}")
+    elif command == "clean":
+        message = clean(pet)
+        print(f"{GREEN}{message}!{RESET}")
 
-    elif args.command == "event":
-        message = GitHubEvents.apply_event(pet, args.type)
-        pet.add_event(message)
-        pet.check_achievements()
-        print(f"{MAGENTA}📡 {message}{RESET}")
+    elif command == "mock-event":
+        message = GitHubEvents.apply_mock_event(pet, args.type)
+        print(f"{MAGENTA}{message}{RESET}")
+
+    elif command == "scan":
+        snapshot = collect_git_snapshot(Path(args.path))
+        messages = apply_git_snapshot(pet, snapshot)
+        print_scan_result(snapshot, messages)
 
     storage.save(pet)
+
+
+def build_parser() -> ArgumentParser:
+    parser = ArgumentParser(prog="gittama", description="GitTama terminal tamagotchi")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    subparsers.add_parser("status", help="Show the pet status")
+    subparsers.add_parser("log", help="Show event history")
+
+    feed_parser = subparsers.add_parser("feed", help="Feed the pet")
+    feed_parser.add_argument("-a", "--amount", type=int, default=15)
+
+    play_parser = subparsers.add_parser("play", help="Play with the pet")
+    play_parser.add_argument("-a", "--amount", type=int, default=15)
+
+    subparsers.add_parser("sleep", help="Let the pet sleep")
+    subparsers.add_parser("clean", help="Reward repository cleanup")
+
+    mock_event_parser = subparsers.add_parser("mock-event", help="Apply a simulated GitHub event")
+    mock_event_parser.add_argument("type", choices=["commit", "pr", "issue", "issue_closed", "ci_success"])
+
+    scan_parser = subparsers.add_parser("scan", help="Scan a local git repository")
+    scan_parser.add_argument("path", nargs="?", default=".", help="Repository path, defaults to current directory")
+
+    return parser
+
+
+def print_status(pet) -> None:
+    print(get_pet_ascii(pet))
+    print(f"{BOLD}GitTama{RESET}")
+    print(f"Name: {pet.name}")
+    print(f"Hunger: {RED}{pet.hunger:3}{RESET} (0 = full, 100 = hungry)")
+    print(f"Energy: {YELLOW}{pet.energy:3}{RESET} (0 = cheerful, 100 = tired)")
+    print(f"Mood:   {MAGENTA}{pet.mood:3}{RESET} (0 = happy, 100 = sad)")
+    print(f"Health: {GREEN}{pet.health:3}{RESET} (0 = bad, 100 = excellent)")
+
+    if pet.achievements:
+        print(f"\n{YELLOW}Achievements:{RESET}")
+        for achievement in pet.achievements:
+            print(f"   - {achievement}")
+
+    if pet.events_log:
+        print(f"\n{BOLD}Recent events:{RESET}")
+        for entry in pet.events_log[-5:]:
+            print(f"   {entry}")
+
+
+def print_scan_result(snapshot: GitSnapshot, messages: list[str]) -> None:
+    if snapshot.is_repo:
+        print(f"{BOLD}Git scan:{RESET} {snapshot.repo_root}")
+        print(f"Branch: {snapshot.branch}")
+        print(f"Dirty: {'yes' if snapshot.is_dirty else 'no'}")
+        if snapshot.last_commit_hash:
+            print(f"Last commit: {snapshot.last_commit_hash[:8]} {snapshot.last_commit_subject or ''}")
+        if snapshot.upstream_available:
+            print(f"Unpushed: {snapshot.unpushed_commits}")
+            print(f"Unpulled: {snapshot.unpulled_commits}")
+        else:
+            print("Upstream: not configured")
+    else:
+        print(f"{YELLOW}Git scan skipped:{RESET} {snapshot.error}")
+
+    print("\nPet reactions:")
+    print(summarize_messages(messages))
 
 
 if __name__ == "__main__":
