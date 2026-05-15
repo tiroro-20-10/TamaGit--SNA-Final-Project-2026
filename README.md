@@ -103,7 +103,10 @@ Invoke-RestMethod http://localhost:8000/health
 Send a local GitHub-style `push` payload:
 
 ```powershell
-$payload = @{ commits = @(@{ id = "local-test" }) } | ConvertTo-Json -Depth 5
+$payload = @{
+  repository = @{ full_name = "owner/repository" }
+  commits = @(@{ id = "local-test" })
+} | ConvertTo-Json -Depth 5
 Invoke-RestMethod `
   -Method Post `
   -Uri http://localhost:8000/webhook/github `
@@ -121,6 +124,8 @@ docker compose run --rm gittama log
 
 If `GITHUB_WEBHOOK_SECRET` is set, the server requires a valid
 `X-Hub-Signature-256` header. Leave it empty for the first local smoke test.
+If `GITHUB_REPO` is set, the payload must contain the same
+`repository.full_name`.
 
 This local server is enough to test the application logic. For real GitHub
 deliveries, `/webhook/github` must be reachable from the internet through a

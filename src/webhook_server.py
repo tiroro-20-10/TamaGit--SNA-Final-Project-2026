@@ -40,6 +40,7 @@ async def github_webhook(
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON payload") from exc
 
+    _verify_repository(payload)
     event = parse_github_webhook(x_github_event, payload)
 
     with _state_lock:
@@ -80,3 +81,18 @@ def _verify_signature(body: bytes, signature: str | None) -> None:
 
     if not hmac.compare_digest(expected, signature):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+
+def _verify_repository(payload: dict[str, Any]) -> None:
+    expected_repo = os.environ.get("GITHUB_REPO")
+    if not expected_repo:
+        return
+
+    repository = payload.get("repository") or {}
+    actual_repo = repository.get("full_name")
+
+    if actual_repo != expected_repo:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Unexpected repository: {actual_repo or 'unknown'}",
+        )

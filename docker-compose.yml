@@ -21,6 +21,7 @@ services:
     command: ["src.webhook_server:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       PYTHONPATH: /workspace:/app
+      GITHUB_REPO: ${GITHUB_REPO:-}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITTAMA_STATE_PATH: /root/.gittama/state.json
     restart: unless-stopped

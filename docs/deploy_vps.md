@@ -73,6 +73,7 @@ nano .env
 Set:
 
 ```env
+GITHUB_REPO=your_username/your_repo
 GITHUB_WEBHOOK_SECRET=replace_with_generated_secret
 GITTAMA_STATE_PATH=~/.gittama/state.json
 ```
