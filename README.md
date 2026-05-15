@@ -11,6 +11,7 @@ current git repository.
 - Time-based decay between launches
 - Basic CLI actions: `status`, `feed`, `play`, `sleep`, `clean`, `log`
 - Local git scan: branch, dirty worktree, last commit, unpushed/unpulled commits
+- Local FastAPI webhook server for GitHub-style payloads
 - Docker and Docker Compose support
 
 ## Requirements
@@ -85,6 +86,46 @@ $env:GITTAMA_STATE_PATH = ".tmp-gittama/state.json"
 gittama status
 ```
 
+## Local Webhook Server
+
+Start the FastAPI webhook service:
+
+```powershell
+docker compose up --build webhook
+```
+
+In another terminal, check that the server is alive:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+```
+
+Send a local GitHub-style `push` payload:
+
+```powershell
+$payload = @{ commits = @(@{ id = "local-test" }) } | ConvertTo-Json -Depth 5
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8000/webhook/github `
+  -Headers @{ "X-GitHub-Event" = "push" } `
+  -ContentType "application/json" `
+  -Body $payload
+```
+
+Then inspect the pet state:
+
+```powershell
+docker compose run --rm gittama status
+docker compose run --rm gittama log
+```
+
+If `GITHUB_WEBHOOK_SECRET` is set, the server requires a valid
+`X-Hub-Signature-256` header. Leave it empty for the first local smoke test.
+
+This local server is enough to test the application logic. For real GitHub
+deliveries, `/webhook/github` must be reachable from the internet through a
+public server, domain, and HTTPS reverse proxy.
+
 
 ## Project Structure
 
@@ -94,7 +135,8 @@ src/
   models.py              Pet state model
   pet_engine.py          Pet rules and reactions
   git_integration.py     Local git scanner
-  github_integration.py  Future GitHub API integration placeholder
+  github_integration.py  GitHub webhook payload mapper
+  webhook_server.py      FastAPI webhook server
   storage.py             JSON persistence
   ui.py                  ASCII pet output
 ```

@@ -7,6 +7,7 @@ RUN apt-get update -o Acquire::Retries=3 \
     && git config --global --add safe.directory /workspace
 
 COPY pyproject.toml README.md /app/
+RUN pip install --no-cache-dir "fastapi>=0.115,<0.116" "uvicorn>=0.34,<0.35"
 COPY src/ /app/src/
 
 ENV PYTHONPATH=/app

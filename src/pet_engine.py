@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Iterable
 
 from .git_integration import GitSnapshot
+from .github_integration import GitHubEvent
 from .models import PetState
 
 
@@ -108,6 +109,32 @@ def apply_git_snapshot(pet: PetState, snapshot: GitSnapshot) -> list[str]:
         pet.add_event(message)
     check_achievements(pet)
     return messages
+
+
+def apply_github_event(pet: PetState, event: GitHubEvent) -> list[str]:
+    if event.ignored:
+        pet.add_event(event.message)
+        return [event.message]
+
+    if event.type == "push":
+        commit_count = max(0, event.count)
+        pet.hunger = clamp(pet.hunger - min(25, commit_count * 5))
+        pet.mood = clamp(pet.mood - min(15, commit_count * 3))
+    elif event.type == "pr_merged":
+        pet.health = clamp(pet.health + 15)
+        pet.energy = clamp(pet.energy - 5)
+    elif event.type == "issue_closed":
+        pet.mood = clamp(pet.mood - 15)
+        pet.hunger = clamp(pet.hunger - 5)
+    elif event.type == "ci_success":
+        pet.health = clamp(pet.health + 10)
+    elif event.type == "ci_failed":
+        pet.health = clamp(pet.health - 20)
+        pet.mood = clamp(pet.mood + 10)
+
+    pet.add_event(event.message)
+    check_achievements(pet)
+    return [event.message]
 
 
 def check_achievements(pet: PetState) -> None:
