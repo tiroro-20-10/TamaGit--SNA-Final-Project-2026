@@ -60,30 +60,6 @@ def clean(pet: PetState) -> str:
     return message
 
 
-def apply_mock_github_event(pet: PetState, event_type: str) -> str:
-    if event_type == "commit":
-        pet.hunger = clamp(pet.hunger - 20)
-        pet.mood = clamp(pet.mood - 10)
-        message = "Simulated GitHub commit event! +20 to satiety"
-    elif event_type == "pr":
-        pet.health = clamp(pet.health + 15)
-        pet.energy = clamp(pet.energy - 8)
-        message = "Simulated pull request merge! +15 to health"
-    elif event_type in {"issue", "issue_closed"}:
-        pet.mood = clamp(pet.mood - 25)
-        pet.hunger = clamp(pet.hunger - 10)
-        message = "Simulated issue close! +25 to mood"
-    elif event_type == "ci_success":
-        pet.health = clamp(pet.health + 10)
-        message = "Simulated CI success! +10 to health"
-    else:
-        message = f"Unknown event: {event_type}"
-
-    pet.add_event(message)
-    check_achievements(pet)
-    return message
-
-
 def apply_git_snapshot(pet: PetState, snapshot: GitSnapshot) -> list[str]:
     if not snapshot.is_repo:
         message = snapshot.error or "This directory is not a git repository"

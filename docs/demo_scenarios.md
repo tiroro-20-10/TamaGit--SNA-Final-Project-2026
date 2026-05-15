@@ -34,20 +34,7 @@ gittama status
 Show that GitTama reads branch, dirty worktree, upstream status, and latest
 commit. The scan result is converted into pet reactions.
 
-## 4. Simulated GitHub events
-
-```bash
-gittama mock-event commit
-gittama mock-event pr
-gittama mock-event issue_closed
-gittama mock-event ci_success
-gittama status
-```
-
-Explain that this is a manual simulation for the MVP. It does not check real
-git commits. Real local git state is checked by `gittama scan`.
-
-## 5. Persistence
+## 4. Persistence
 
 Run:
 
@@ -66,7 +53,7 @@ gittama status
 The changed state should still be available because it is stored in
 `~/.gittama/state.json`.
 
-## 6. Docker run
+## 5. Docker run
 
 ```bash
 docker compose build

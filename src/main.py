@@ -2,7 +2,6 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from .git_integration import GitSnapshot, collect_git_snapshot
-from .github_integration import GitHubEvents
 from .pet_engine import (
     apply_git_snapshot,
     clean,
@@ -60,10 +59,6 @@ def main() -> None:
         message = clean(pet)
         print(f"{GREEN}{message}!{RESET}")
 
-    elif command == "mock-event":
-        message = GitHubEvents.apply_mock_event(pet, args.type)
-        print(f"{MAGENTA}{message}{RESET}")
-
     elif command == "scan":
         snapshot = collect_git_snapshot(Path(args.path))
         messages = apply_git_snapshot(pet, snapshot)
@@ -87,9 +82,6 @@ def build_parser() -> ArgumentParser:
 
     subparsers.add_parser("sleep", help="Let the pet sleep")
     subparsers.add_parser("clean", help="Reward repository cleanup")
-
-    mock_event_parser = subparsers.add_parser("mock-event", help="Apply a simulated GitHub event")
-    mock_event_parser.add_argument("type", choices=["commit", "pr", "issue", "issue_closed", "ci_success"])
 
     scan_parser = subparsers.add_parser("scan", help="Scan a local git repository")
     scan_parser.add_argument("path", nargs="?", default=".", help="Repository path, defaults to current directory")

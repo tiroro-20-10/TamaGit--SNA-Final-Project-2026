@@ -1,9 +1,7 @@
-from .models import PetState
-from .pet_engine import apply_mock_github_event
+"""
+Placeholder for future GitHub API integration.
 
-
-class GitHubEvents:
-
-    @staticmethod
-    def apply_mock_event(pet: PetState, event_type: str) -> str:
-        return apply_mock_github_event(pet, event_type)
+The current MVP uses only local git scanning through git_integration.py.
+When real GitHub sync is added, this module should fetch PR, issue, and CI
+status data from the GitHub API and convert it into engine inputs.
+"""

@@ -10,7 +10,6 @@ current git repository.
 - Persistent JSON state in `~/.gittama/state.json`
 - Time-based decay between launches
 - Basic CLI actions: `status`, `feed`, `play`, `sleep`, `clean`, `log`
-- Simulated GitHub events for demos: `commit`, `pr`, `issue`, `issue_closed`, `ci_success`
 - Local git scan: branch, dirty worktree, last commit, unpushed/unpulled commits
 - Docker and Docker Compose support
 
@@ -58,14 +57,9 @@ gittama clean
 gittama log
 gittama scan
 gittama scan /path/to/repository
-gittama mock-event commit
-gittama mock-event pr
-gittama mock-event issue_closed
-gittama mock-event ci_success
 ```
 
-`mock-event` does not check real Git history. It manually simulates a GitHub
-event for demos. Use `gittama scan` to inspect the real local repository.
+Use `gittama scan` to inspect the real local repository.
 
 ## Docker
 
@@ -73,7 +67,6 @@ event for demos. Use `gittama scan` to inspect the real local repository.
 docker compose build
 docker compose run --rm gittama status
 docker compose run --rm gittama scan
-docker compose run --rm gittama mock-event commit
 ```
 
 The Compose setup mounts the current project to `/workspace` and stores pet
@@ -101,7 +94,7 @@ src/
   models.py              Pet state model
   pet_engine.py          Pet rules and reactions
   git_integration.py     Local git scanner
-  github_integration.py  Mock GitHub event adapter
+  github_integration.py  Future GitHub API integration placeholder
   storage.py             JSON persistence
   ui.py                  ASCII pet output
 ```
