@@ -4,7 +4,7 @@
 
 Your pet reacts to commits, PRs, issues, and CI events — motivating you to keep the repository alive and clean.
 
-## Features
+## Features 
 
 - Daily quests
 - 6 achievements
