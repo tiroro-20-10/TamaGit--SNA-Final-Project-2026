@@ -1,7 +1,37 @@
 services:
-  gittama:
-    build: .
+  tamagit:
+    build:
+      context: .
+      target: runtime
+    working_dir: /workspace
+    environment:
+      PYTHONPATH: /workspace:/app
     volumes:
-      - ~/.gittama:/root/.gittama
+      - ~/.tamagit:/root/.tamagit
+      - .:/workspace
     command: status
-    # Docker compose run --rm gittama feed
+    # Usage: docker compose run --rm tamagit <command>
+    # Examples:
+    #   docker compose run --rm tamagit status
+    #   docker compose run --rm tamagit scan
+    #   docker compose run --rm tamagit log
+    #   docker compose run --rm tamagit graveyard
+
+  webhook:
+    build:
+      context: .
+      target: runtime
+    working_dir: /workspace
+    entrypoint: ["python", "-m", "uvicorn"]
+    command: ["src.webhook_server:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      PYTHONPATH: /workspace:/app
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      TAMAGIT_STATE_PATH: /root/.tamagit/state.json
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ~/.tamagit:/root/.tamagit
+      - .:/workspace
