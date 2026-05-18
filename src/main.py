@@ -1173,5 +1173,66 @@ def _build_parser() -> ArgumentParser:
     return parser
 
 
+def build_parser() -> ArgumentParser:
+    parser = ArgumentParser(prog="gittama", description="GitTama terminal tamagotchi")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    subparsers.add_parser("status", help="Show the pet status")
+    subparsers.add_parser("log", help="Show event history")
+
+    feed_parser = subparsers.add_parser("feed", help="Feed the pet")
+    feed_parser.add_argument("-a", "--amount", type=int, default=15)
+
+    play_parser = subparsers.add_parser("play", help="Play with the pet")
+    play_parser.add_argument("-a", "--amount", type=int, default=15)
+
+    subparsers.add_parser("sleep", help="Let the pet sleep")
+    subparsers.add_parser("clean", help="Reward repository cleanup")
+
+    scan_parser = subparsers.add_parser("scan", help="Scan a local git repository")
+    scan_parser.add_argument("path", nargs="?", default=".", help="Repository path, defaults to current directory")
+
+    return parser
+
+
+def print_status(pet) -> None:
+    print(get_pet_ascii(pet))
+    print(f"{BOLD}GitTama{RESET}")
+    print(f"Name: {pet.name}")
+    print(f"Hunger: {RED}{pet.hunger:3}{RESET} (0 = full, 100 = hungry)")
+    print(f"Energy: {YELLOW}{pet.energy:3}{RESET} (0 = cheerful, 100 = tired)")
+    print(f"Mood:   {MAGENTA}{pet.mood:3}{RESET} (0 = happy, 100 = sad)")
+    print(f"Health: {GREEN}{pet.health:3}{RESET} (0 = bad, 100 = excellent)")
+
+    if pet.achievements:
+        print(f"\n{YELLOW}Achievements:{RESET}")
+        for achievement in pet.achievements:
+            print(f"   - {achievement}")
+
+    if pet.events_log:
+        print(f"\n{BOLD}Recent events:{RESET}")
+        for entry in pet.events_log[-5:]:
+            print(f"   {entry}")
+
+
+def print_scan_result(snapshot: GitSnapshot, messages: list[str]) -> None:
+    if snapshot.is_repo:
+        print(f"{BOLD}Git scan:{RESET} {snapshot.repo_root}")
+        print(f"Branch: {snapshot.branch}")
+        print(f"Dirty: {'yes' if snapshot.is_dirty else 'no'}")
+        if snapshot.last_commit_hash:
+            print(f"Last commit: {snapshot.last_commit_hash[:8]} {snapshot.last_commit_subject or ''}")
+        if snapshot.upstream_available:
+            print(f"Unpushed: {snapshot.unpushed_commits}")
+            print(f"Unpulled: {snapshot.unpulled_commits}")
+        else:
+            print("Upstream: not configured")
+    else:
+        print(f"{YELLOW}Git scan skipped:{RESET} {snapshot.error}")
+
+    print("\nPet reactions:")
+    print(summarize_messages(messages))
+
+
 if __name__ == "__main__":
     main()

@@ -27,6 +27,36 @@ Stats range **0–100** (higher = better). The pet dies when Health reaches 0.
 ```bash
 # Install
 pip install -e .
+gittama status
+```
+
+## Commands
+
+```bash
+gittama status
+gittama feed --amount 20
+gittama play
+gittama sleep
+gittama clean
+gittama log
+gittama scan
+gittama scan /path/to/repository
+```
+
+Use `gittama scan` to inspect the real local repository.
+
+## Docker
+
+```bash
+docker compose build
+docker compose run --rm gittama status
+docker compose run --rm gittama scan
+```
+
+The Compose setup mounts the current project to `/workspace` and stores pet
+state in `~/.gittama`.
+
+For temporary runs or CI, override the state file:
 
 # Hatch your team pet (egg animation + name + repo setup)
 tamagit init
