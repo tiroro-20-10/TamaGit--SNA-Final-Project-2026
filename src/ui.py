@@ -1,8 +1,11 @@
 """
 Terminal UI — ANSI output for tamagit status, prompt, graveyard.
+All display functions respect local config (theme, show_*, ascii_style, prompt_format).
 
-All display functions respect the local config (theme, show_* flags,
-ascii_style, prompt_format). Import config_manager here to read prefs.
+Prompt color design:
+  - Name + brackets []:  neutral (WHITE/DIM)
+  - Face icon (^.^):     mood state color (same as status/live)
+  - Stats H:xx E:xx:     single stat_color based on average (performance indicator)
 """
 from __future__ import annotations
 
@@ -12,7 +15,6 @@ from typing import List
 
 from .models import GraveyardEntry, PetState, TOTAL_ACHIEVEMENTS, TEAM_ACHIEVEMENTS
 
-# ── ANSI codes ─────────────────────────────────────────────────────────────────
 RESET   = "\033[0m"
 BOLD    = "\033[1m"
 DIM     = "\033[2m"
@@ -28,7 +30,6 @@ ORANGE  = "\033[38;5;208m"
 
 
 def _cfg(key: str):
-    """Read local config value (lazy import to avoid circular deps)."""
     try:
         from . import config_manager
         return config_manager.get(key)
@@ -42,13 +43,11 @@ def _is_mono() -> bool:
 
 
 def _c(*codes: str) -> str:
-    """Return ANSI codes or empty string in monochrome mode."""
     return "" if _is_mono() else "".join(codes)
 
 
 def stat_color(value: float) -> str:
-    if _is_mono():
-        return ""
+    if _is_mono(): return ""
     v = int(value)
     if v >= 75: return GREEN
     if v >= 50: return YELLOW
@@ -56,29 +55,48 @@ def stat_color(value: float) -> str:
     return RED
 
 
+def _mood_color(label: str) -> str:
+    """Consistent mood-state color used in status, prompt face, and live TUI."""
+    if _is_mono(): return ""
+    return {
+        "ecstatic": GREEN,  "happy":     CYAN,
+        "okay":     YELLOW, "sad":       MAGENTA,
+        "miserable":RED,    "sleeping":  BLUE,
+        "on_fire":  ORANGE, "ghost":     GRAY,
+    }.get(label, RESET)
+
+
 def stat_bar(label: str, value: float, width: int = 22) -> str:
     v      = int(value)
     filled = v * width // 100
     color  = stat_color(value)
     bar    = "█" * filled + "░" * (width - filled)
-    reset  = _c(RESET)
-    bold   = _c(BOLD)
-    return f"  {bold}{label:<10}{reset} {color}[{bar}] {v:3d}%{reset}"
+    return f"  {_c(BOLD)}{label:<10}{_c(RESET)} {color}[{bar}] {v:3d}%{_c(RESET)}"
 
 
 # ── ASCII art (config-aware) ───────────────────────────────────────────────────
 
 def get_pet_ascii(pet: PetState) -> str:
     style = _cfg("ascii_style")
+    label = pet.mood_label
+    mc    = _mood_color(label)  # consistent mood color in all styles
+
     if style == "emoji":
         icon = {
             "ecstatic": "😸", "happy": "😺", "okay": "😼", "sad": "😿",
             "miserable": "🙀", "sleeping": "😴", "on_fire": "🔥😺", "ghost": "👻",
-        }.get(pet.mood_label, "🐱")
-        return f"\n   {icon}\n"
+        }.get(label, "🐱")
+        return f"\n   {mc}{icon}{_c(RESET)}\n"
+
     if style == "minimal":
-        return _ascii_minimal(pet.mood_label)
-    # standard (default)
+        face = {
+            "ecstatic": "^o^", "happy": "^.^", "okay": "-.-",
+            "sad": "T.T", "miserable": ";_;", "sleeping": "z.z",
+            "on_fire": ">^<", "ghost": "x.x",
+        }.get(label, "...")
+        return f"\n  {mc}/\\_/\\\n ({face})\n   ~  {_c(RESET)}\n"
+
+    # standard (5-line)
     return {
         "ecstatic":  _ascii_ecstatic,
         "happy":     _ascii_happy,
@@ -88,16 +106,7 @@ def get_pet_ascii(pet: PetState) -> str:
         "sleeping":  _ascii_sleeping,
         "on_fire":   _ascii_on_fire,
         "ghost":     _ascii_ghost,
-    }.get(pet.mood_label, _ascii_okay)()
-
-
-def _ascii_minimal(label: str) -> str:
-    faces = {
-        "ecstatic": "^o^", "happy": "^.^", "okay": "-.-",
-        "sad": "T.T", "miserable": ";_;", "sleeping": "z.z",
-        "on_fire": ">^<", "ghost": "x.x",
-    }
-    return f"\n  /\\_/\\\n ({faces.get(label, '...')})\n   ~\n"
+    }.get(label, _ascii_okay)()
 
 
 def _ascii_ecstatic() -> str:
@@ -128,18 +137,6 @@ def egg_hatch_frames() -> List[str]:
     ]
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _mood_color(label: str) -> str:
-    if _is_mono(): return ""
-    return {
-        "ecstatic": GREEN,  "happy":     CYAN,
-        "okay":     YELLOW, "sad":       MAGENTA,
-        "miserable":RED,    "sleeping":  BLUE,
-        "on_fire":  ORANGE, "ghost":     GRAY,
-    }.get(label, RESET)
-
-
 def _time_ago(iso_str: str) -> str:
     if not iso_str: return "never"
     try:
@@ -163,20 +160,18 @@ def print_status(pet: PetState) -> None:
     bold    = _c(BOLD)
     dim     = _c(DIM)
 
-    # Effective display name (local override or official)
     try:
         from . import config_manager
         display_name = config_manager.effective_name(pet.name)
     except Exception:
         display_name = pet.name
 
+    mc = _mood_color(pet.mood_label)
+
     print()
     print(f"{bold}{border}  ╔══════════════ TamaGit ══════════════╗{reset}")
     print(f"{bold}{border}  ║{reset}  {bold}Name  :{reset}  {display_name}")
-    if display_name != pet.name:
-        print(f"{bold}{border}  ║{reset}  {bold}(official):{reset}  {dim}{pet.name}{reset}")
     print(f"{bold}{border}  ║{reset}  {bold}Age   :{reset}  {pet.age_days} day(s)")
-    mc = _mood_color(pet.mood_label)
     print(f"{bold}{border}  ║{reset}  {bold}State :{reset}  {mc}{pet.mood_label}{reset}")
     if pet.streak_days > 0:
         fire = "🔥" if pet.streak_days >= 7 else "📅"
@@ -229,18 +224,20 @@ def _print_alive_panel(pet: PetState) -> None:
     if _cfg("show_quest") and pet.daily_quest_text:
         from datetime import date
         if pet.daily_quest_date == date.today().isoformat():
-            progress = f"{pet.daily_commit_count if pet.daily_quest_trigger=='commit_count' else pet.daily_issue_count if pet.daily_quest_trigger=='issue_count' else pet.daily_pr_count}/{pet.daily_quest_threshold}"
             if pet.daily_quest_done:
                 print(f"  {bold}🎯 Team Quest:{reset}  {_c(GREEN)}✅ {pet.daily_quest_text}{reset}")
             else:
-                print(f"  {bold}🎯 Team Quest:{reset}  {_c(YELLOW)}{pet.daily_quest_text}{reset}  {dim}[{progress}]{reset}")
+                c = pet.daily_commit_count if pet.daily_quest_trigger == "commit_count" else \
+                    pet.daily_issue_count  if pet.daily_quest_trigger == "issue_count"  else \
+                    pet.daily_pr_count
+                print(f"  {bold}🎯 Team Quest:{reset}  {_c(YELLOW)}{pet.daily_quest_text}{reset}  {dim}[{c}/{pet.daily_quest_threshold}]{reset}")
             print()
 
     if _cfg("show_achievements"):
         cnt = len(pet.achievements)
         if cnt > 0:
-            pct_bar = "█" * (cnt * 10 // TOTAL_ACHIEVEMENTS) + "░" * (10 - cnt * 10 // TOTAL_ACHIEVEMENTS)
-            print(f"  🏆 {_c(YELLOW)}{cnt}/{TOTAL_ACHIEVEMENTS}{reset} achievements  {dim}[{pct_bar}]  tamagit achievements{reset}")
+            bar = "█"*(cnt*10//TOTAL_ACHIEVEMENTS) + "░"*(10-cnt*10//TOTAL_ACHIEVEMENTS)
+            print(f"  🏆 {_c(YELLOW)}{cnt}/{TOTAL_ACHIEVEMENTS}{reset} achievements  {dim}[{bar}]  tamagit achievements{reset}")
             print()
 
     if _cfg("show_events") and pet.events_log:
@@ -263,8 +260,10 @@ def _print_death_panel(pet: PetState) -> None:
 
     print(f"  {red}{bold}💀  Your team pet has died.{reset}")
     print(f"  {dim}Reason: {pet.death_reason}{reset}")
+    if pet.buried:
+        print(f"  {dim}The pet has been laid to rest in the graveyard.{reset}")
     print()
-    print(f"  {bold}The team must complete these tasks before a new pet hatches:{reset}")
+    print(f"  {bold}Complete these tasks for the server to auto-hatch a new pet:{reset}")
 
     def task_line(done: bool, label: str, progress: str) -> str:
         icon = f"{green}✅{reset}" if done else f"{gray}☐ {reset}"
@@ -275,20 +274,14 @@ def _print_death_panel(pet: PetState) -> None:
     print(task_line(pet.cooldown_ci_ok >= 1,   "CI success once", f"{pet.cooldown_ci_ok}/1"))
     print()
     if pet.cooldown_done:
-        print(f"  {green}{bold}All tasks done — new pet will hatch on next GitHub event!{reset}")
-    else:
-        remaining = []
-        if pet.cooldown_commits < 3: remaining.append(f"{3 - pet.cooldown_commits} commit(s)")
-        if pet.cooldown_issues < 1:  remaining.append("close 1 issue")
-        if pet.cooldown_ci_ok < 1:   remaining.append("1 CI success")
-        print(f"  {dim}Still needed: {', '.join(remaining)}.{reset}")
+        print(f"  {green}{bold}All tasks done — new pet hatches on next GitHub event!{reset}")
     print()
-    print(f"  {dim}When done, the server auto-creates a new pet. Run 'tamagit sync'.{reset}")
+    print(f"  {dim}Run 'tamagit sync' after each task to see progress.{reset}")
     print(f"  {dim}Run 'tamagit graveyard' to see all fallen pets.{reset}")
     print()
 
 
-def print_graveyard(entries: List[GraveyardEntry]) -> None:
+def print_graveyard(entries: List[GraveyardEntry], has_ghost: bool = False) -> None:
     reset = _c(RESET)
     bold  = _c(BOLD)
     dim   = _c(DIM)
@@ -300,9 +293,14 @@ def print_graveyard(entries: List[GraveyardEntry]) -> None:
     print(f"{bold}{gray}  ══════════════ ⚰  Graveyard  ⚰ ══════════════{reset}")
     print()
     if not entries:
-        print(f"  {dim}No pets have died yet. Keep committing!{reset}")
+        if has_ghost:
+            print(f"  {_c(MAGENTA)}👻  Ghosts wander these halls...{reset}")
+            print(f"  {dim}Complete the cooldown tasks to let the spirit rest.{reset}")
+        else:
+            print(f"  {dim}No pets have died yet. Keep committing!{reset}")
         print()
         return
+
     tombstone = ["    .------.", "    | R.I.P |", "    |_______|", "   /         \\", "  |___________|"]
     for i, e in enumerate(entries, 1):
         for line in tombstone:
@@ -315,13 +313,22 @@ def print_graveyard(entries: List[GraveyardEntry]) -> None:
         if e.achievements:
             print(f"  {yellow}{', '.join(e.achievements[:4])}{reset}")
         if i < len(entries): print()
+
     print()
+    if has_ghost:
+        print(f"  {_c(MAGENTA)}👻  A ghost still wanders — complete the cooldown.{reset}")
     print(f"  {dim}Total fallen: {len(entries)}{reset}")
     print()
 
 
 def get_prompt_string(pet: PetState) -> str:
-    """One-line string for embedding in PS1. Respects prompt_format config."""
+    """One-line string for PS1.
+
+    Color design (consistent with status and live):
+      name + brackets []:  WHITE (neutral)
+      face icon (^.^):     mood state color  ← same as status/live
+      stats H:xx E:xx:     single stat_color based on avg performance
+    """
     try:
         from . import config_manager
         display_name = config_manager.effective_name(pet.name)
@@ -338,28 +345,28 @@ def get_prompt_string(pet: PetState) -> str:
         "sad": "T.T", "miserable": ";_;", "sleeping": "z.z",
         "on_fire": ">^<", "ghost": "x.x",
     }
-    icon  = icon_map.get(pet.mood_label, "...")
-    avg   = (pet.hunger + pet.energy + pet.mood) / 3
-    color = stat_color(avg)
-    reset = _c(RESET)
+    icon     = icon_map.get(pet.mood_label, "...")
+    mood_c   = _mood_color(pet.mood_label)   # state color for the face
+    avg      = (pet.hunger + pet.energy + pet.mood) / 3
+    stat_c   = stat_color(avg)               # performance color for numbers
+    neutral  = _c(WHITE)
+    reset    = _c(RESET)
 
     h, e, m, hp = int(pet.hunger), int(pet.energy), int(pet.mood), int(pet.health)
 
     if fmt == "minimal":
-        return f"{color}{icon}{reset}"
+        return f"{neutral}[{mood_c}{icon}{neutral}]{reset}"
     if fmt == "compact":
-        return f"{color}[{display_name}({icon}) {int(avg)}%]{reset}"
-    # full (default): show all four stats including health
-    return f"{color}[{display_name}({icon}) H:{h} E:{e} M:{m} ❤:{hp}]{reset}"
+        return f"{neutral}[{display_name}({mood_c}{icon}{neutral}) {stat_c}{int(avg)}%{neutral}]{reset}"
+    # full — all four stats
+    return f"{neutral}[{display_name}({mood_c}{icon}{neutral}) {stat_c}H:{h} E:{e} M:{m} ❤:{hp}{neutral}]{reset}"
 
 
-# ── Ghost messages ─────────────────────────────────────────────────────────────
 _GHOST_LINES = [
     "you abandoned me...", "the CI was always red...",
     "you never merged that PR...", "boo. make some commits.",
     "I haunt your git log.", "I just wanted clean issues...",
     "commit. at least once a week.", "even /dev/null got more attention.",
-    "my issues are still open.", "the pipeline is still broken.",
 ]
 
 

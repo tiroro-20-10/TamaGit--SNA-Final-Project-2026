@@ -33,7 +33,43 @@ from .ui import (
 )
 
 
+def _load_dotenv() -> None:
+    """Load /opt/TamaGit/.env into os.environ so CLI commands work outside Docker.
+    Uses setdefault so existing env vars are never overwritten.
+    """
+    env_file = Path("/opt/TamaGit/.env")
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+def _require_pet_on_server() -> bool:
+    """Return True if VPS has an initialised pet (or VPS is not configured).
+    Prints an error and returns False when VPS URL is set but no pet exists yet.
+    """
+    vps_url = config_manager.effective_vps_url()
+    if not vps_url:
+        return True   # no VPS configured — allow local-only operation
+    try:
+        urllib.request.urlopen(f"{vps_url}/state", timeout=3)
+        return True
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            print(f"\n  {RED}No pet on the server yet.{RESET}")
+            print(f"  SSH to the server and run: {BOLD}tamagit init{RESET}\n")
+            return False
+        return True   # other HTTP error — don't block
+    except Exception:
+        return True   # VPS unreachable — don't block local operation
+
+
 def main() -> None:
+    _load_dotenv()
     parser = _build_parser()
     args   = parser.parse_args()
     cmd    = args.command or "status"
@@ -41,7 +77,10 @@ def main() -> None:
 
     # Commands that always work regardless of pet state
     if cmd == "help":           _cmd_help();            return
-    if cmd == "graveyard":      print_graveyard(storage.load_graveyard()); return
+    if cmd == "graveyard":
+        has_ghost = (storage.is_initialized() and not storage.load().alive)
+        print_graveyard(storage.load_graveyard(), has_ghost=has_ghost)
+        return
     if cmd == "docs":           _cmd_docs(getattr(args,"topic",None)); return
     if cmd == "config":
         _cmd_config(
@@ -61,6 +100,8 @@ def main() -> None:
             storage,
         ); return
     if cmd == "daemon":
+        subcmd = getattr(args, "daemon_cmd", None) or "status"
+        if subcmd == "start" and not _require_pet_on_server(): return
         _cmd_daemon(getattr(args,"daemon_cmd",None) or "status"); return
     if cmd == "rename":
         _cmd_rename(getattr(args,"new_name",""), storage); return
@@ -75,6 +116,8 @@ def main() -> None:
     if cmd == "init":   _cmd_init(storage); return
     if cmd == "demo":
         _cmd_demo(getattr(args,"demo_mode","status")); return
+    if cmd == "test":
+        _cmd_test(); return
 
     # Commands that need pet state
     if not storage.is_initialized():
@@ -399,6 +442,11 @@ def _cmd_setup(storage: Storage) -> None:
     else:
         print(f"  {DIM}No VPS URL — skipping sync.{RESET}")
 
+    # Only offer prompt/daemon if VPS has a pet
+    if not _require_pet_on_server():
+        print(f"  {DIM}Set up the server first, then re-run tamagit setup.{RESET}\n")
+        return
+
     ans = input(f"\n  Add TamaGit to bash prompt? [Y/n]: ").strip().lower()
     if ans != "n": _cmd_install_prompt()
 
@@ -504,7 +552,12 @@ def _cmd_uninstall() -> None:
 
     _cmd_uninstall_prompt()
     print(f"\n  {GREEN}Done!{RESET}")
-    print(f"  Finish with: {BOLD}pip uninstall tamagit{RESET}  +  {BOLD}source ~/.bashrc{RESET}\n")
+    if Path("/opt/tamagit-venv").exists():
+        print(f"  To remove the package: {BOLD}/opt/tamagit-venv/bin/pip uninstall tamagit{RESET}")
+        print(f"  To remove the venv:    {BOLD}rm -rf /opt/tamagit-venv /usr/local/bin/tamagit{RESET}")
+    else:
+        print(f"  To remove the package: {BOLD}pip uninstall tamagit{RESET}")
+    print(f"  To restore prompt:     {BOLD}source ~/.bashrc{RESET}\n")
 
 
 # ── Config ─────────────────────────────────────────────────────────────────────
@@ -671,6 +724,17 @@ sed -i '/# TAMAGIT-CLEANUP/,/# END-TAMAGIT-CLEANUP/d' ~/.bashrc 2>/dev/null
 
 # ── Help & docs ────────────────────────────────────────────────────────────────
 
+def _cmd_test() -> None:
+    """Run pytest on the TamaGit test suite."""
+    import subprocess
+    project_dir = Path(__file__).parent.parent
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/", "-v"],
+        cwd=project_dir,
+    )
+    sys.exit(result.returncode)
+
+
 def _cmd_help() -> None:
     print(f"\n  {BOLD}{WHITE}TamaGit — Terminal Team Tamagotchi for GitHub{RESET}")
     print(f"  {DIM}Your pet lives through the team's GitHub activity.{RESET}\n")
@@ -695,6 +759,7 @@ def _cmd_help() -> None:
         ("uninstall-prompt", "Remove pet from bash prompt"),
         ("uninstall",        "Remove all TamaGit data"),
         ("demo status",      "Preview all ASCII states"),
+        ("test",             "Run the test suite (pytest)"),
         ("demo live",        "Preview all TUI animations"),
         ("docs [TOPIC]",     "Built-in documentation"),
         ("help",             "This help"),
@@ -1044,10 +1109,11 @@ def _build_parser() -> ArgumentParser:
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
     for sc in ["setup","server-setup","init","status","log","achievements",
                "graveyard","live","sync","install-prompt","uninstall-prompt",
-               "uninstall","help","prompt"]:
+               "uninstall","help","prompt","test"]:
         sub.add_parser(sc)
 
     rename_p = sub.add_parser("rename"); rename_p.add_argument("new_name", nargs="?", default="")
+    sub.add_parser("test")
     scan_p   = sub.add_parser("scan");   scan_p.add_argument("path", nargs="?", default=".")
     docs_p   = sub.add_parser("docs");   docs_p.add_argument("topic", nargs="?", default=None)
     demo_p   = sub.add_parser("demo");   demo_p.add_argument("demo_mode", nargs="?", default="status",

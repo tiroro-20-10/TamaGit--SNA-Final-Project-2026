@@ -1,18 +1,9 @@
 """
-TamaGit Webhook Server — FastAPI app receiving GitHub events.
+TamaGit Webhook Server.
 
-Endpoints:
-    GET  /health        liveness check
-    GET  /state         current pet state (404 if not yet initialized)
-    GET  /graveyard     list of dead pets (404 if not yet initialized)
-    PUT  /state/name    rename the pet (team admin action)
-    POST /webhook/github  main GitHub webhook receiver
-
-Architecture notes:
-    - ALL game-logic changes happen here (stats, streak, quest, achievements).
-    - Local CLI is read-only / display-only for game state.
-    - update_from_time() is called before every read and write so decay
-      accumulates correctly even if no events come in for hours.
+Key change from v8: pet is buried in the graveyard IMMEDIATELY on death
+(not after cooldown). The `pet.buried` flag prevents double-burying.
+After cooldown, a new pet is created without a second bury call.
 """
 from __future__ import annotations
 
@@ -20,22 +11,19 @@ import hashlib
 import hmac
 import json
 import os
-import subprocess
 from threading import Lock
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request
 
 from .github_integration import parse_github_webhook
-from .models import PetState, DEFAULT_PET_NAMES
+from .models import PetState
 from .pet_engine import apply_github_event, refresh_daily_quest, update_from_time
 from .storage import Storage
 
 app = FastAPI(title="TamaGit Webhook Server")
 _lock = Lock()
 
-
-# ── Health & state ─────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -44,10 +32,8 @@ def health() -> dict[str, str]:
 
 @app.get("/state")
 def get_state() -> dict[str, Any]:
-    """Return pet state as JSON.
-
+    """Return pet state. Computes decay so stats are always fresh on read.
     Returns 404 if tamagit init has not been run yet.
-    Runs update_from_time() so decay is always up-to-date when clients sync.
     """
     with _lock:
         storage = Storage()
@@ -57,14 +43,15 @@ def get_state() -> dict[str, Any]:
                 detail="No pet yet. Run 'tamagit init' on the server first.",
             )
         pet = storage.load()
-        update_from_time(pet)   # apply time-based decay before serving
+        update_from_time(pet)
+        _bury_if_just_died(pet, storage)
         storage.save(pet)
     return pet.to_dict()
 
 
 @app.get("/graveyard")
 def get_graveyard() -> list[dict]:
-    """Return all graveyard entries. Returns 404 if not initialized."""
+    """Return graveyard entries. Returns 404 if not initialized."""
     storage = Storage()
     if not storage.is_initialized():
         raise HTTPException(status_code=404, detail="No pet yet.")
@@ -73,7 +60,7 @@ def get_graveyard() -> list[dict]:
 
 @app.put("/state/name")
 def set_name(body: dict[str, str]) -> dict[str, Any]:
-    """Rename the team pet (intended for admin use from the server machine)."""
+    """Rename the team pet (admin-only, run on server)."""
     name = (body.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name must not be empty")
@@ -89,8 +76,6 @@ def set_name(body: dict[str, str]) -> dict[str, Any]:
     return {"ok": True, "name": name}
 
 
-# ── Main webhook ──────────────────────────────────────────────────────────────
-
 @app.post("/webhook/github")
 async def github_webhook(
     request: Request,
@@ -102,7 +87,6 @@ async def github_webhook(
 
     if not x_github_event:
         raise HTTPException(status_code=400, detail="Missing X-GitHub-Event")
-
     try:
         payload = json.loads(body.decode() or "{}")
     except json.JSONDecodeError as exc:
@@ -113,15 +97,17 @@ async def github_webhook(
 
     with _lock:
         storage = Storage()
-
-        # Don't process events if no pet has been initialized yet
         if not storage.is_initialized():
             return {"ok": True, "ignored": True, "reason": "no pet initialized"}
 
         pet = storage.load()
+        was_alive = pet.alive
         update_from_time(pet)
 
-        # Refresh quest on first event of the day (server-side generation)
+        # Bury immediately on death (before processing the triggering event)
+        _bury_if_just_died(pet, storage)
+
+        # Refresh quest on first event of the day
         context = _build_quest_context()
         refresh_daily_quest(pet, context)
 
@@ -130,7 +116,7 @@ async def github_webhook(
         # Auto-resurrect after cooldown completes
         resurrected = False
         if not pet.alive and pet.cooldown_done:
-            pet, _ = _auto_resurrect(pet, storage)
+            pet = _auto_resurrect(pet, storage)
             resurrected = True
 
         storage.save(pet)
@@ -154,11 +140,50 @@ async def github_webhook(
     }
 
 
-# ── Auto-resurrection ──────────────────────────────────────────────────────────
+# ── Helper: bury on death ──────────────────────────────────────────────────────
 
-def _auto_resurrect(dead_pet: PetState, storage: Storage) -> tuple[PetState, Any]:
-    """Bury dead pet and hatch a new one with stats based on cooldown quality."""
-    entry = storage.bury(dead_pet)
+def _bury_if_just_died(pet: PetState, storage: Storage) -> None:
+    """Bury the pet in the graveyard the moment it dies, if not already buried."""
+    if not pet.alive and not pet.buried:
+        storage.bury(pet)
+        pet.buried = True
+        pet.add_event(
+            f"⚰️ {pet.name} has been laid to rest. "
+            "Complete the cooldown tasks to adopt a new pet."
+        )
+        _notify_death(pet)
+
+
+def _notify_death(pet: PetState) -> None:
+    """Create a GitHub issue to notify the team of the pet's death (best-effort)."""
+    token = os.environ.get("GITHUB_TOKEN", "")
+    repo  = pet.github_repo
+    if not token or "/" not in (repo or ""):
+        return
+    try:
+        from .github_api import create_issue
+        owner, repo_name = repo.split("/", 1)
+        create_issue(
+            owner, repo_name, token,
+            title=f"💀 {pet.name} has died",
+            body=(
+                f"Your team pet **{pet.name}** has died from: _{pet.death_reason}_\n\n"
+                f"To adopt a new pet, the team must:\n"
+                f"- ☐ Make 3 commits\n"
+                f"- ☐ Close 1 issue\n"
+                f"- ☐ Get CI green once\n\n"
+                f"After all tasks are done, the server will automatically hatch a new pet "
+                f"on the next GitHub event. Run `tamagit sync` to see it."
+            ),
+        )
+    except Exception:
+        pass  # notification is best-effort
+
+
+# ── Auto-resurrection (after cooldown) ────────────────────────────────────────
+
+def _auto_resurrect(dead_pet: PetState, storage: Storage) -> PetState:
+    """Create a new pet after cooldown. The old pet was already buried on death."""
     new_name = dead_pet.random_name()
 
     # Better cooldown performance → better starting stats
@@ -176,16 +201,16 @@ def _auto_resurrect(dead_pet: PetState, storage: Storage) -> tuple[PetState, Any
     )
     new_pet.add_event(f"New team pet hatched: {new_name}!")
     new_pet.add_event(
-        f"Starting stats reflect cooldown work — "
+        f"Starting stats reflect cooldown — "
         f"H:{int(hunger)} E:{int(energy)} M:{int(mood)}"
     )
 
     _notify_resurrection(new_name, dead_pet.name, dead_pet.github_repo)
-    return new_pet, entry
+    return new_pet
 
 
 def _notify_resurrection(new_name: str, old_name: str, github_repo: str) -> None:
-    """Create a GitHub issue to notify the team (best-effort)."""
+    """Create a GitHub issue to announce the new pet (best-effort)."""
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token or "/" not in (github_repo or ""):
         return
@@ -201,14 +226,12 @@ def _notify_resurrection(new_name: str, old_name: str, github_repo: str) -> None
                 f"Run `tamagit sync` to meet your new team companion.\n\n"
                 f"*To rename: SSH to the server and run `tamagit rename <name>`*"
             ),
-            labels=["tamagit"],
         )
     except Exception:
         pass
 
 
 def _build_quest_context() -> dict | None:
-    """Fetch repo context for contextual quest generation via GitHub API."""
     token = os.environ.get("GITHUB_TOKEN", "")
     repo  = os.environ.get("GITHUB_REPO", "")
     if not token or "/" not in (repo or ""):
@@ -224,8 +247,6 @@ def _build_quest_context() -> dict | None:
     except Exception:
         return None
 
-
-# ── Security ──────────────────────────────────────────────────────────────────
 
 def _verify_signature(body: bytes, signature: str | None) -> None:
     secret = os.environ.get("GITHUB_WEBHOOK_SECRET", "")

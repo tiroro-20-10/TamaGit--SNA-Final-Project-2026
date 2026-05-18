@@ -11,7 +11,8 @@ COPY pyproject.toml README.md /app/
 RUN pip install --no-cache-dir \
     "fastapi>=0.115,<0.116" \
     "uvicorn>=0.34,<0.35" \
-    "textual>=0.80.0"
+    "textual>=0.80.0" \
+    "pytest>=8.0"
 COPY src/ /app/src/
 
 ENV PYTHONPATH=/app

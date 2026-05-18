@@ -136,6 +136,10 @@ class PetState:
     cooldown_issues:  int = 0   # need 1
     cooldown_ci_ok:   int = 0   # need 1
 
+    # Tracks whether the dead pet has been added to the graveyard already.
+    # Prevents double-burying if the server was down at the moment of death.
+    buried: bool = False
+
     # Custom name pool for auto-init (set during tamagit init)
     custom_pet_names: List[str] = field(default_factory=list)
 

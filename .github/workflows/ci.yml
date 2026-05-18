@@ -1,8 +1,0 @@
-name: Always Pass CI
-on: [push, pull_request]
-jobs:
-  dummy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Always succeed
-        run: echo "CI passed"
