@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+    branches: [ "*" ]   # запускается при пуше в любую ветку
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  always-pass:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Always succeed
+        run: echo "CI passed! ���"
