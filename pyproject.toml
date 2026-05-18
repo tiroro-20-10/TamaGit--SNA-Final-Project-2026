@@ -1,25 +1,17 @@
-[tool.poetry]
+[project]
 name = "tamagit"
-version = "0.3.0"
-description = "Terminal Team Tamagotchi for GitHub — keep your repo healthy or your pet dies"
-authors = ["You <you@example.com>"]
-readme = "README.md"
-packages = [{include = "src"}]
+version = "0.7.0"
+description = "Terminal Team Tamagotchi for GitHub"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "textual>=0.80.0",
+]
 
-[tool.poetry.dependencies]
-python   = "^3.10"
-fastapi  = "^0.115.0"
-uvicorn  = "^0.34.0"
-textual  = ">=0.80.0"   # live TUI (tamagit live)
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0"
-black  = "^24.0"
-ruff   = "^0.1"
-
-[tool.poetry.scripts]
+[project.scripts]
 tamagit = "src.main:main"
 
 [build-system]
-requires      = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
