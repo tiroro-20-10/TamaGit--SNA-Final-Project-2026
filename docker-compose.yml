@@ -1,32 +1,36 @@
 services:
-  gittama:
-    build:
-      context: .
-      target: runtime
-    working_dir: /workspace
-    environment:
-      PYTHONPATH: /workspace:/app
-    volumes:
-      - ~/.gittama:/root/.gittama
-      - .:/workspace
-    command: status
-    # docker compose run --rm gittama scan
-
   webhook:
     build:
       context: .
       target: runtime
-    working_dir: /workspace
-    entrypoint: ["python", "-m", "uvicorn"]
-    command: ["src.webhook_server:app", "--host", "0.0.0.0", "--port", "8000"]
-    environment:
-      PYTHONPATH: /workspace:/app
-      GITHUB_REPO: ${GITHUB_REPO:-}
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
-      GITTAMA_STATE_PATH: /root/.gittama/state.json
+    container_name: tamagit-webhook
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
-      - ~/.gittama:/root/.gittama
+      - ~/.tamagit:/root/.tamagit
       - .:/workspace
+    environment:
+      PYTHONPATH: /workspace
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      TAMAGIT_STATE_PATH: /root/.tamagit/state.json
+      TAMAGIT_VPS_URL: ${TAMAGIT_VPS_URL:-}
+    working_dir: /workspace
+    entrypoint: ["python", "-m", "uvicorn"]
+    command: ["src.webhook_server:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  tamagit:
+    build:
+      context: .
+      target: runtime
+    volumes:
+      - ~/.tamagit:/root/.tamagit
+      - .:/workspace
+    environment:
+      PYTHONPATH: /workspace
+      TAMAGIT_STATE_PATH: /root/.tamagit/state.json
+    working_dir: /workspace
+    entrypoint: ["python", "-m", "src.main"]
+    profiles: ["cli"]

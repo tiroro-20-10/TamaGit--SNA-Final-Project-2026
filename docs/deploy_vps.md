@@ -1,161 +1,122 @@
-# Deploy to VPS
+# TamaGit — VPS & Webhook Setup Guide
 
-This is the simple deployment path for the current MVP. It uses one
-`docker-compose.yml` file and exposes the FastAPI webhook server directly on
-port `8000`.
+## 1. Server Info
 
-## 1. What Runs Where
+| Parameter | Value |
+|---|---|
+| Server IP | `72.56.239.253` |
+| Project Path | `/opt/TamaGit` |
+| Webhook URL | `http://72.56.239.253:8000/webhook/github` |
+| Health URL | `http://72.56.239.253:8000/health` |
 
-Run these commands on your local Windows machine:
+---
 
-```powershell
-git add .
-git commit -m "Prepare webhook deployment"
-git push
-```
-
-Run server setup commands in the VPS terminal over SSH:
+## 2. First-Time Setup
 
 ```bash
-ssh root@YOUR_SERVER_IP
-```
+# Connect to VPS
+ssh root@72.56.239.253
 
-## 2. Server Requirements
+# Go to project directory
+cd /opt/TamaGit
 
-- Ubuntu 24.04 LTS or Ubuntu 22.04 LTS
-- Public IPv4 address
-- Open TCP ports: `22` and `8000`
-- Docker Engine with Docker Compose plugin
+# Generate a webhook secret
+openssl rand -hex 32
+# Copy the output — you'll need it in .env and GitHub settings
 
-For this simple MVP setup, a domain is not required.
-
-## 3. Install Base Tools
-
-On the server:
-
-```bash
-apt update && apt upgrade -y
-apt install -y git curl ca-certificates openssl
-```
-
-Install Docker Engine using the official Docker instructions for Ubuntu:
-
-```text
-https://docs.docker.com/engine/install/ubuntu/
-```
-
-Check:
-
-```bash
-docker --version
-docker compose version
-```
-
-## 4. Clone Project
-
-On the server:
-
-```bash
-cd /opt
-git clone YOUR_REPOSITORY_URL GitTama
-cd GitTama
-```
-
-## 5. Configure Environment
-
-Create `.env`:
-
-```bash
+# Create .env from template
 cp .env.example .env
 nano .env
-```
+# Fill in GITHUB_REPO and GITHUB_WEBHOOK_SECRET
 
-Set:
-
-```env
-GITHUB_REPO=your_username/your_repo
-GITHUB_WEBHOOK_SECRET=replace_with_generated_secret
-GITTAMA_STATE_PATH=~/.gittama/state.json
-```
-
-Generate secret:
-
-```bash
-openssl rand -hex 32
-```
-
-## 6. Start Webhook Server
-
-On the server:
-
-```bash
+# Start the webhook server
 docker compose up -d --build webhook
-```
 
-Check:
-
-```bash
+# Verify it's running
 docker compose ps
-curl http://localhost:8000/health
-curl http://YOUR_SERVER_IP:8000/health
+curl http://localhost:8000/health   # expected: {"status":"ok"}
+curl http://72.56.239.253:8000/health
 ```
 
-Expected:
+---
 
-```json
-{"status":"ok"}
-```
+## 3. Configure GitHub Webhook
 
-## 7. Configure GitHub Webhook
+Open your repository:  
+`https://github.com/tiroro-20-10/TamaGit--SNA-Final-Project-2026`
 
-In the GitHub repository:
+Go to: **Settings → Webhooks → Add webhook**
 
-```text
-Settings -> Webhooks -> Add webhook
-```
+| Field | Value |
+|---|---|
+| Payload URL | `http://72.56.239.253:8000/webhook/github` |
+| Content type | `application/json` |
+| Secret | value of `GITHUB_WEBHOOK_SECRET` from `.env` |
+| SSL verification | Disable (HTTP endpoint) |
+| Events | Pushes, Pull requests, Issues, Workflow runs |
+| Active | ✅ |
 
-Use:
+After saving, GitHub sends a **ping** — check Recent Deliveries for status 200.
 
-```text
-Payload URL: http://YOUR_SERVER_IP:8000/webhook/github
-Content type: application/json
-Secret: same value as GITHUB_WEBHOOK_SECRET
-Events: push, pull_request, issues, workflow_run
-Active: yes
-```
+---
 
-After saving, check `Recent Deliveries` on the webhook page.
-
-## 8. Useful Commands
-
-Logs:
+## 4. Test the Webhook
 
 ```bash
-docker compose logs -f webhook
+# Watch logs in real time
+cd /opt/TamaGit && docker compose logs -f webhook
+
+# Test push event (from local machine with repo access)
+git clone https://github.com/tiroro-20-10/TamaGit--SNA-Final-Project-2026.git
+cd TamaGit--SNA-Final-Project-2026
+echo "webhook test" >> webhook-test.txt
+git add . && git commit -m "test: TamaGit webhook"
+git push
+
+# Check pet reaction on VPS
+docker compose run --rm tamagit log
+docker compose run --rm tamagit status
 ```
 
-Restart:
+Expected log entry: `alice pushed 1 commit(s) to 'main'`
+
+---
+
+## 5. Useful Commands on VPS
 
 ```bash
-docker compose restart webhook
+# Check pet status
+docker compose run --rm tamagit status
+
+# See full event log
+docker compose run --rm tamagit log
+
+# View graveyard
+docker compose run --rm tamagit graveyard
+
+# Restart webhook after code changes
+git pull && docker compose up -d --build webhook
+
+# Firewall (if port 8000 is blocked)
+ufw allow 8000/tcp
 ```
 
-Update after local push:
+
+---
+
+## 6. Reset / Cleanup
+
+Use this when you want to replay the whole scenario from scratch.
 
 ```bash
-git pull
-docker compose up -d --build webhook
+# Stop the webhook container
+cd /opt/TamaGit && docker compose down
+
+# Remove the local TamaGit data cache
+rm -rf ~/.tamagit
+
+# Remove the cloned project folder if you want a fully clean rerun
+rm -rf /opt/TamaGit
 ```
 
-Check pet state on the server:
-
-```bash
-docker compose run --rm gittama status
-docker compose run --rm gittama log
-```
-
-## 9. Notes
-
-This setup uses plain HTTP. It is simpler and good enough for an MVP/demo, but a
-real production setup should use HTTPS with a domain and a reverse proxy such as
-Caddy.
+If you keep the project folder, but want a clean pet state only, deleting `~/.tamagit` is enough.

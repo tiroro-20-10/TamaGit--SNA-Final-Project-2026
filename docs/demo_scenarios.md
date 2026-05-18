@@ -5,7 +5,7 @@ Use these commands during the project defense.
 ## 1. Launch the pet
 
 ```bash
-gittama status
+tamagit status
 ```
 
 Show hunger, energy, mood, health, recent events, and achievements.
@@ -13,11 +13,11 @@ Show hunger, energy, mood, health, recent events, and achievements.
 ## 2. User actions
 
 ```bash
-gittama feed
-gittama play
-gittama sleep
-gittama clean
-gittama status
+tamagit feed
+tamagit play
+tamagit sleep
+tamagit clean
+tamagit status
 ```
 
 Explain that these actions are local controls for the pet.
@@ -27,11 +27,11 @@ Explain that these actions are local controls for the pet.
 Run from inside a git repository:
 
 ```bash
-gittama scan
-gittama status
+tamagit scan
+tamagit status
 ```
 
-Show that GitTama reads branch, dirty worktree, upstream status, and latest
+Show that TamaGit reads branch, dirty worktree, upstream status, and latest
 commit. The scan result is converted into pet reactions.
 
 ## 4. Persistence
@@ -39,26 +39,26 @@ commit. The scan result is converted into pet reactions.
 Run:
 
 ```bash
-gittama status
-gittama feed
-gittama status
+tamagit status
+tamagit feed
+tamagit status
 ```
 
 Close the terminal, open it again, and run:
 
 ```bash
-gittama status
+tamagit status
 ```
 
 The changed state should still be available because it is stored in
-`~/.gittama/state.json`.
+`~/.tamagit/state.json`.
 
 ## 5. Docker run
 
 ```bash
 docker compose build
-docker compose run --rm gittama status
-docker compose run --rm gittama scan
+docker compose run --rm tamagit status
+docker compose run --rm tamagit scan
 ```
 
 Use this to demonstrate that the project can run without committing a local
@@ -87,8 +87,8 @@ Invoke-RestMethod `
 Then show the updated state:
 
 ```bash
-docker compose run --rm gittama status
-docker compose run --rm gittama log
+docker compose run --rm tamagit status
+docker compose run --rm tamagit log
 ```
 
 Explain that this validates webhook processing locally. Real GitHub delivery
