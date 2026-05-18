@@ -1,1 +1,2 @@
 cooldown 1
+cooldown 2
