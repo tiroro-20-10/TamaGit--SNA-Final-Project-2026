@@ -127,8 +127,7 @@ def _demo_live() -> None:
             ("n", "next",  "Next state"),
             ("p", "prev",  "Prev state"),
             ("t", "theme", "Toggle theme"),
-            ("ctrl+p", "noop", ""),
-        ]
+            ]
 
         def __init__(self):
             super().__init__()
@@ -238,7 +237,6 @@ def _demo_live() -> None:
             self.notify(f"Theme: {'monochrome' if self._mono else 'dark'}", timeout=2)
 
         def action_quit(self): self.exit()
-        def action_noop(self): pass
 
     DemoApp().run()
 

@@ -100,3 +100,23 @@ git pull && docker compose up -d --build webhook
 # Firewall (if port 8000 is blocked)
 ufw allow 8000/tcp
 ```
+
+
+---
+
+## 6. Reset / Cleanup
+
+Use this when you want to replay the whole scenario from scratch.
+
+```bash
+# Stop the webhook container
+cd /opt/TamaGit && docker compose down
+
+# Remove the local TamaGit data cache
+rm -rf ~/.tamagit
+
+# Remove the cloned project folder if you want a fully clean rerun
+rm -rf /opt/TamaGit
+```
+
+If you keep the project folder, but want a clean pet state only, deleting `~/.tamagit` is enough.

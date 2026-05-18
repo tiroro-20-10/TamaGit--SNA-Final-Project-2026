@@ -177,14 +177,13 @@ def _sbar(label: str, value: float, width: int = 18, mono: bool = False) -> str:
 class TamaGitApp(App):
     """Live TUI — animated team pet.
 
-    Reads directly from VPS (if TAMAGIT_VPS_URL configured) every 5 s,
-    or falls back to local state.json. Press T to toggle dark/monochrome theme.
+    Reads directly from the VPS every 5 s when TAMAGIT_VPS_URL is set,
+    or falls back to the local state.json cache. Press T to toggle dark/monochrome theme.
     """
     BINDINGS = [
         ("q", "quit",         "Quit"),
         ("r", "refresh",      "Refresh"),
         ("t", "toggle_theme", "Toggle theme"),
-        ("ctrl+p", "noop",    ""),   # disable Textual command palette
     ]
 
     def __init__(self) -> None:
@@ -438,6 +437,3 @@ class TamaGitApp(App):
         self.refresh_css()
         self.notify(f"Theme: {new_theme}", timeout=2)
 
-    def action_noop(self) -> None:
-        """Absorb ctrl+p so Textual command palette doesn't open."""
-        pass

@@ -22,7 +22,7 @@ from pathlib import Path
 
 from . import config_manager
 from .git_integration import collect_git_snapshot
-from .models import PetState, TEAM_ACHIEVEMENTS, TOTAL_ACHIEVEMENTS, DEFAULT_PET_NAMES
+from .models import GraveyardEntry, PetState, TEAM_ACHIEVEMENTS, TOTAL_ACHIEVEMENTS, DEFAULT_PET_NAMES
 from .pet_engine import apply_git_snapshot, summarize_messages, update_from_time
 from .storage import Storage
 from .ui import (
@@ -77,10 +77,6 @@ def main() -> None:
 
     # Commands that always work regardless of pet state
     if cmd == "help":           _cmd_help();            return
-    if cmd == "graveyard":
-        has_ghost = (storage.is_initialized() and not storage.load().alive)
-        print_graveyard(storage.load_graveyard(), has_ghost=has_ghost)
-        return
     if cmd == "docs":           _cmd_docs(getattr(args,"topic",None)); return
     if cmd == "config":
         _cmd_config(
@@ -90,6 +86,7 @@ def main() -> None:
     if cmd == "install-prompt":   _cmd_install_prompt();   return
     if cmd == "uninstall-prompt": _cmd_uninstall_prompt(); return
     if cmd == "prompt":           _cmd_prompt(storage);    return
+    if cmd == "graveyard":        _cmd_graveyard(storage); return
     if cmd == "server-setup":     _cmd_server_setup();     return
     if cmd == "setup":            _cmd_setup(storage);     return
     if cmd == "uninstall":        _cmd_uninstall();        return
@@ -119,26 +116,29 @@ def main() -> None:
     if cmd == "test":
         _cmd_test(); return
 
-    # Commands that need pet state
-    if not storage.is_initialized():
-        _print_no_pet_hint(cmd); return
+    # Read-only commands: pull fresh VPS data when available, then display it.
+    if cmd in {"status", "log", "scan", "achievements"}:
+        pet = _load_pet_for_read(storage)
+        if pet is None:
+            _print_no_pet_hint(cmd); return
 
-    pet = storage.load()
-    was_alive = pet.alive
-    update_from_time(pet)
+        was_alive = pet.alive
+        if not pet.alive:
+            ghost = maybe_ghost_message(pet)
+            if ghost:
+                print(ghost)
 
-    if not pet.alive:
-        ghost = maybe_ghost_message(pet)
-        if ghost: print(ghost)
+        if cmd == "status":     print_status(pet)
+        elif cmd == "log":      _cmd_log(pet)
+        elif cmd == "scan":     _cmd_scan(pet, getattr(args,"path","."))
+        elif cmd == "achievements": _cmd_achievements(pet)
 
-    if cmd == "status":     print_status(pet)
-    elif cmd == "log":      _cmd_log(pet)
-    elif cmd == "scan":     _cmd_scan(pet, getattr(args,"path","."))
-    elif cmd == "achievements": _cmd_achievements(pet)
+        if was_alive and not pet.alive:
+            _print_death_notification(pet)
+        storage.save(pet)
+        return
 
-    if was_alive and not pet.alive:
-        _print_death_notification(pet)
-    storage.save(pet)
+    _print_no_pet_hint(cmd)
 
 
 # ── No-pet helper ─────────────────────────────────────────────────────────────
@@ -162,6 +162,72 @@ def _print_no_pet_hint(cmd: str) -> None:
             print(f"\n  {YELLOW}No local pet data.{RESET}  Run: {BOLD}tamagit sync{RESET}\n")
     else:
         print(f"\n  {YELLOW}No pet found.{RESET}  Run: {BOLD}tamagit setup{RESET} or {BOLD}tamagit init{RESET}\n")
+
+
+
+def _sync_from_vps(storage: Storage, include_graveyard: bool = True) -> PetState | None:
+    """Pull the latest state from the VPS and cache it locally.
+
+    The VPS is the source of truth for game state. Local git metadata is merged
+    back in because only the developer machine knows the worktree status.
+    """
+    vps_url = config_manager.effective_vps_url()
+    if not vps_url:
+        return None
+
+    try:
+        resp = urllib.request.urlopen(f"{vps_url}/state", timeout=8)
+        vps_pet = PetState.from_dict(json.loads(resp.read().decode()))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        return None
+    except Exception:
+        return None
+
+    if storage.is_initialized():
+        local_pet = storage.load()
+        vps_pet.git_repos = local_pet.git_repos
+        local_events = [e for e in local_pet.events_log if e not in set(vps_pet.events_log)]
+        if local_events:
+            vps_pet.events_log = (vps_pet.events_log + local_events)[-30:]
+
+    storage.save(vps_pet)
+
+    if include_graveyard:
+        try:
+            resp2 = urllib.request.urlopen(f"{vps_url}/graveyard", timeout=8)
+            gdata = json.loads(resp2.read().decode())
+            entries = [GraveyardEntry.from_dict(e) for e in gdata]
+            storage.save_graveyard(entries)
+        except Exception:
+            pass
+
+    return vps_pet
+
+
+def _load_pet_for_read(storage: Storage) -> PetState | None:
+    """Load current pet for read-only commands.
+
+    Prefer the VPS when it is configured; otherwise fall back to the local cache.
+    """
+    pet = _sync_from_vps(storage)
+    if pet is not None:
+        return pet
+
+    if storage.is_initialized():
+        pet = storage.load()
+        update_from_time(pet)
+        return pet
+
+    return None
+
+
+def _cmd_graveyard(storage: Storage) -> None:
+    """Show graveyard, refreshing from the VPS when possible."""
+    _sync_from_vps(storage, include_graveyard=True)
+    has_ghost = storage.is_initialized() and not storage.load().alive
+    print_graveyard(storage.load_graveyard(), has_ghost=has_ghost)
 
 
 # ── Core commands ──────────────────────────────────────────────────────────────
@@ -349,51 +415,22 @@ def _cmd_rename(new_name: str, storage: Storage) -> None:
 
 
 def _cmd_sync(storage: Storage) -> None:
-    """Fetch state + graveyard from VPS, merge with local git_repos."""
+    """Fetch the latest server state and cache it locally."""
     vps_url = config_manager.effective_vps_url()
     if not vps_url:
         print(f"\n  {YELLOW}VPS URL not configured.{RESET}")
-        print(f"  Run: {BOLD}tamagit config set vps_url http://...:8000{RESET}\n"); return
-    try:
-        # Fetch state
-        resp    = urllib.request.urlopen(f"{vps_url}/state", timeout=8)
-        data    = json.loads(resp.read().decode())
-        vps_pet = PetState.from_dict(data)
+        print(f"  Run: {BOLD}tamagit config set vps_url http://...:8000{RESET}\n")
+        return
 
-        # Merge: VPS game stats + local git_repos metadata
-        if storage.is_initialized():
-            local_pet = storage.load()
-            vps_pet.git_repos = local_pet.git_repos
-            # VPS events are authoritative; append any local-only events
-            vps_set = set(vps_pet.events_log)
-            local_only = [e for e in local_pet.events_log if e not in vps_set]
-            vps_pet.events_log = (vps_pet.events_log + local_only)[-30:]
+    vps_pet = _sync_from_vps(storage, include_graveyard=True)
+    if vps_pet is None:
+        print(f"\n  {RED}No pet on server yet.{RESET}  Run 'tamagit init' on the server.\n")
+        return
 
-            # Sync name: if no local override, use server's official name
-            if not config_manager.get("local_name"):
-                pass  # display_name = vps_pet.name already
-
-        storage.save(vps_pet)
-
-        # Fetch graveyard
-        try:
-            from .models import GraveyardEntry
-            resp2   = urllib.request.urlopen(f"{vps_url}/graveyard", timeout=8)
-            gdata   = json.loads(resp2.read().decode())
-            entries = [GraveyardEntry.from_dict(e) for e in gdata]
-            storage.save_graveyard(entries)
-        except Exception:
-            pass  # graveyard sync is best-effort
-
-        print(f"{GREEN}Synced!{RESET}  {vps_pet.name}  alive={vps_pet.alive}  "
-              f"H={int(vps_pet.hunger)} E={int(vps_pet.energy)} M={int(vps_pet.mood)}")
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            print(f"\n  {RED}No pet on server yet.{RESET}  Run 'tamagit init' on the server.\n")
-        else:
-            print(f"{RED}Sync failed:{RESET} HTTP {exc.code}")
-    except Exception as exc:
-        print(f"{RED}Sync failed:{RESET} {exc}")
+    print(
+        f"{GREEN}Synced!{RESET}  {vps_pet.name}  alive={vps_pet.alive}  "
+        f"H={int(vps_pet.hunger)} E={int(vps_pet.energy)} M={int(vps_pet.mood)}"
+    )
 
 
 def _print_death_notification(pet: PetState) -> None:
@@ -742,20 +779,21 @@ def _cmd_help() -> None:
         ("setup",            "First-time wizard for local developer"),
         ("server-setup",     "First-time wizard for VPS (run on server)"),
         ("init",             "Hatch the team pet (run on server after server-setup)"),
-        ("status",           "Show full status panel"),
+        ("status",           "Show full status panel (reads VPS when configured)"),
         ("log",              "Show full event history"),
         ("scan [PATH]",      "Scan local git repo (updates dirty/unpushed metadata)"),
         ("achievements",     "Show all team achievements"),
-        ("graveyard",        "View all fallen pets"),
+        ("graveyard",        "View all fallen pets (syncs from VPS when available)"),
         ("rename <name>",    "Set local display name"),
-        ("live",             "Live animated TUI in a separate terminal"),
-        ("sync",             "Sync state + graveyard from VPS"),
-        ("daemon start",     "Start background daemon (auto-sync + scan)"),
-        ("daemon stop/status/restart/logs", "Manage daemon"),
+        ("prompt",            "Print the shell prompt preview from the local cache"),
+        ("live",             "Live animated TUI in a separate terminal (direct VPS polling)"),
+        ("sync",             "Manual VPS sync and local cache refresh"),
+        ("daemon start",     "Optional background sync/scan daemon"),
+        ("daemon stop/status/restart/logs", "Manage optional daemon"),
         ("config",           "Interactive local config editor"),
         ("config set k v",   "Set config value"),
         ("config list",      "List all config values"),
-        ("install-prompt",   "Add pet to bash prompt"),
+        ("install-prompt",   "Add pet to bash prompt (local cache for speed)"),
         ("uninstall-prompt", "Remove pet from bash prompt"),
         ("uninstall",        "Remove all TamaGit data"),
         ("demo status",      "Preview all ASCII states"),
@@ -1113,7 +1151,6 @@ def _build_parser() -> ArgumentParser:
         sub.add_parser(sc)
 
     rename_p = sub.add_parser("rename"); rename_p.add_argument("new_name", nargs="?", default="")
-    sub.add_parser("test")
     scan_p   = sub.add_parser("scan");   scan_p.add_argument("path", nargs="?", default=".")
     docs_p   = sub.add_parser("docs");   docs_p.add_argument("topic", nargs="?", default=None)
     demo_p   = sub.add_parser("demo");   demo_p.add_argument("demo_mode", nargs="?", default="status",

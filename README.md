@@ -48,7 +48,7 @@ tamagit install-prompt && source ~/.bashrc
 
 ## Webhook Setup (VPS)
 
-The pet reacts to GitHub events in real time via webhook.
+The pet reacts to GitHub events in real time via webhook. `tamagit status` also refreshes from the VPS when configured, while `tamagit prompt` stays local for speed.
 
 ```bash
 # Copy project to VPS
@@ -83,7 +83,7 @@ tamagit status            Full status panel
 tamagit log               Event history
 tamagit scan [PATH]       Scan a local git repository
 tamagit graveyard         See all fallen pets
-tamagit install-prompt    Add TamaGit to bash prompt
+tamagit install-prompt    Add TamaGit to bash prompt (local cache for speed)
 tamagit uninstall-prompt  Remove from bash prompt
 tamagit help              Show help
 ```
@@ -120,7 +120,7 @@ All dead pets are preserved in `tamagit graveyard`.
 
 ## Tech Stack
 
-Python · FastAPI · Docker · GitHub Webhooks · GitHub Actions · SQLite/JSON
+Python · FastAPI · Docker · GitHub Webhooks · GitHub Actions · SQLite/JSON · Optional daemon
 
 ---
 

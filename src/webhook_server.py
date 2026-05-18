@@ -11,6 +11,8 @@ import hashlib
 import hmac
 import json
 import os
+import sys
+import traceback
 from threading import Lock
 from typing import Any
 
@@ -157,8 +159,12 @@ def _bury_if_just_died(pet: PetState, storage: Storage) -> None:
 def _notify_death(pet: PetState) -> None:
     """Create a GitHub issue to notify the team of the pet's death (best-effort)."""
     token = os.environ.get("GITHUB_TOKEN", "")
-    repo  = pet.github_repo
+    repo = pet.github_repo
     if not token or "/" not in (repo or ""):
+        print(
+            "[tamagit] death issue skipped: missing GITHUB_TOKEN or GITHUB_REPO",
+            file=sys.stderr,
+        )
         return
     try:
         from .github_api import create_issue
@@ -176,8 +182,12 @@ def _notify_death(pet: PetState) -> None:
                 f"on the next GitHub event. Run `tamagit sync` to see it."
             ),
         )
-    except Exception:
-        pass  # notification is best-effort
+    except Exception as exc:
+        print(
+            f"[tamagit] death issue creation failed for {pet.github_repo}: {exc}",
+            file=sys.stderr,
+        )
+        traceback.print_exc()
 
 
 # ── Auto-resurrection (after cooldown) ────────────────────────────────────────
@@ -213,6 +223,10 @@ def _notify_resurrection(new_name: str, old_name: str, github_repo: str) -> None
     """Create a GitHub issue to announce the new pet (best-effort)."""
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token or "/" not in (github_repo or ""):
+        print(
+            "[tamagit] resurrection issue skipped: missing GITHUB_TOKEN or GITHUB_REPO",
+            file=sys.stderr,
+        )
         return
     try:
         from .github_api import create_issue
@@ -227,8 +241,12 @@ def _notify_resurrection(new_name: str, old_name: str, github_repo: str) -> None
                 f"*To rename: SSH to the server and run `tamagit rename <name>`*"
             ),
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        print(
+            f"[tamagit] resurrection issue creation failed for {github_repo}: {exc}",
+            file=sys.stderr,
+        )
+        traceback.print_exc()
 
 
 def _build_quest_context() -> dict | None:
