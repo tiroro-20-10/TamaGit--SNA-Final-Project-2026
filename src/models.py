@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict, field
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from datetime import datetime
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -13,6 +13,7 @@ class PetState:
     last_updated: str = ""
     achievements: List[str] = field(default_factory=list)
     events_log: List[str] = field(default_factory=list)
+    git_repos: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self):
         if not self.last_updated:
@@ -29,6 +30,8 @@ class PetState:
             data["achievements"] = []
         if "events_log" not in data:
             data["events_log"] = []
+        if "git_repos" not in data:
+            data["git_repos"] = {}
         return cls(**data)
 
     def update_from_time(self):
@@ -56,7 +59,7 @@ class PetState:
 
     def check_achievements(self):
         new_ach = []
-        if "First Commit" not in self.achievements and any("коммит" in log.lower() for log in self.events_log):
+        if "First Commit" not in self.achievements and any("commit" in log.lower() for log in self.events_log):
             new_ach.append("First Commit")
         if "Healthy Repo" not in self.achievements and self.health >= 80:
             new_ach.append("Healthy Repo")

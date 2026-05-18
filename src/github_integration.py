@@ -1,28 +1,68 @@
-from models import PetState
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
 
 
-class GitHubEvents:
+@dataclass
+class GitHubEvent:
+    type: str
+    message: str
+    count: int = 1
+    conclusion: str | None = None
+    ignored: bool = False
 
-    @staticmethod
-    def apply_event(pet: PetState, event_type: str) -> str:
-        if event_type == "commit":
-            pet.hunger = max(0, pet.hunger - 20)
-            pet.mood = max(0, pet.mood - 10)
-            return "📨 New commit! +20 to satiety"
 
-        elif event_type == "pr":
-            pet.health = min(100, pet.health + 15)
-            pet.energy = max(0, pet.energy - 8)
-            return "🔀 Pull Request merged! +15 to health"
+def parse_github_webhook(event_name: str, payload: dict[str, Any]) -> GitHubEvent:
+    if event_name == "push":
+        commits = payload.get("commits") or []
+        count = len(commits)
+        return GitHubEvent(
+            type="push",
+            message=f"GitHub push received with {count} commit(s)",
+            count=count,
+        )
 
-        elif event_type in ["issue", "issue_closed"]: 
-            pet.mood = max(0, pet.mood - 25)
-            pet.hunger = max(0, pet.hunger - 10)
-            return "✅ Issue is closed! +25 to the mood"
+    if event_name == "pull_request":
+        action = payload.get("action")
+        pull_request = payload.get("pull_request") or {}
+        if action == "closed" and pull_request.get("merged"):
+            return GitHubEvent(type="pr_merged", message="GitHub pull request merged")
+        return GitHubEvent(
+            type="pr_activity",
+            message=f"GitHub pull request activity: {action or 'unknown'}",
+            ignored=True,
+        )
 
-        elif event_type == "ci_success":
-            pet.health = min(100, pet.health + 10)
-            return "✅ CI was successful! +10 to health"
+    if event_name == "issues":
+        action = payload.get("action")
+        if action == "closed":
+            return GitHubEvent(type="issue_closed", message="GitHub issue closed")
+        return GitHubEvent(
+            type="issue_activity",
+            message=f"GitHub issue activity: {action or 'unknown'}",
+            ignored=True,
+        )
 
-        else:
-            return f"Unknown event: {event_type}"
+    if event_name == "workflow_run":
+        action = payload.get("action")
+        workflow_run = payload.get("workflow_run") or {}
+        if action == "completed":
+            conclusion = workflow_run.get("conclusion") or "unknown"
+            if conclusion == "success":
+                return GitHubEvent(
+                    type="ci_success",
+                    message="GitHub workflow completed successfully",
+                    conclusion=conclusion,
+                )
+            return GitHubEvent(
+                type="ci_failed",
+                message=f"GitHub workflow completed with conclusion: {conclusion}",
+                conclusion=conclusion,
+            )
+
+    return GitHubEvent(
+        type="ignored",
+        message=f"GitHub event ignored: {event_name}",
+        ignored=True,
+    )
