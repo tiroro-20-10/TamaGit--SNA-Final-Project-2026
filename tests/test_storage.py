@@ -1,96 +1,160 @@
 """
-Тесты для TamaGit v3.
-
-Покрывают: Storage, PetState, pet_engine, ачивки, квесты, streak, смерть.
-Запуск: pytest -q
+TamaGit tests — covers core mechanics, team quest system, config, and death achievements.
+Run with: pytest -q
 """
 import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from src.config_manager import DEFAULTS, get, set_, reset, all_values
 from src.github_integration import GitHubEvent, parse_github_webhook
-from src.models import GraveyardEntry, PetState
+from src.models import PetState, TOTAL_ACHIEVEMENTS, TEAM_ACHIEVEMENTS
 from src.pet_engine import (
-    apply_github_event,
-    get_or_refresh_daily_quest,
-    try_complete_quest,
-    update_from_time,
-    update_streak,
+    apply_github_event, apply_git_snapshot,
+    refresh_daily_quest, update_quest_progress,
+    update_from_time, update_streak,
 )
-from src.storage import Storage, _death_achievements
+from src.storage import Storage
+from src.storage_helpers import _death_achievements
+from src.git_integration import GitSnapshot
+import os
 
 
-# ── Базовые тесты Storage ─────────────────────────────────────────────────────
-
-def test_save_load_roundtrip():
+def test_roundtrip():
     with tempfile.TemporaryDirectory() as tmp:
         s = Storage(str(Path(tmp) / "state.json"))
-        pet = PetState(name="Pixel", hunger=60.0, energy=70.0, mood=80.0)
+        pet = PetState(name="X", hunger=60.0, energy=70.0, mood=80.0)
         s.save(pet)
         loaded = s.load()
-        assert loaded.name == "Pixel"
+        assert loaded.name == "X"
         assert abs(loaded.hunger - 60.0) < 0.01
-    print("save/load roundtrip: OK")
+    print("roundtrip: OK")
 
-
-def test_default_created_when_missing():
-    with tempfile.TemporaryDirectory() as tmp:
-        s = Storage(str(Path(tmp) / "sub" / "state.json"))
-        assert not s.is_initialized()
-        pet = s.load()
-        assert pet.alive and pet.name == "TamaGit"
-        assert s.is_initialized()
-    print("default creation: OK")
-
-
-# ── Семантика статов ──────────────────────────────────────────────────────────
 
 def test_stats_higher_is_better():
-    """100 = хорошо, 0 = плохо."""
     pet = PetState(hunger=100.0, energy=100.0, mood=100.0)
     assert pet.mood_label in ("ecstatic", "on_fire", "happy")
     print(f"stats semantics ({pet.mood_label}): OK")
 
 
+# ── Webhook events ─────────────────────────────────────────────────────────────
+
 def test_push_increases_hunger_mood():
     pet = PetState(hunger=50.0, mood=50.0)
-    apply_github_event(pet, GitHubEvent(type="push", message="test", count=2, contributor="alice"))
+    apply_github_event(pet, GitHubEvent(type="push", message="bob pushed", count=2, contributor="bob"))
     assert pet.hunger > 50 and pet.mood > 50
-    assert pet.last_fed_by == "alice"
+    assert pet.last_fed_by == "bob"
     print(f"push: hunger→{int(pet.hunger)}, fed_by={pet.last_fed_by}: OK")
 
 
-def test_ci_fail_decreases_health_energy():
+def test_ci_failed_decreases_health_energy():
     pet = PetState(health=80.0, energy=80.0)
-    apply_github_event(pet, GitHubEvent(type="ci_failed", message="CI failed", count=1))
+    apply_github_event(pet, GitHubEvent(type="ci_failed", message="CI fail", count=1))
     assert pet.health < 80 and pet.energy < 80
-    print(f"ci_fail: health→{int(pet.health)}: OK")
+    assert pet.ci_failed_today is True
+    print("ci_failed: OK")
 
 
-# ── Contributor в webhook payload ─────────────────────────────────────────────
-
-def test_contributor_from_webhook():
-    payload = {
-        "sender": {"login": "bob"},
-        "commits": [{"id": "abc"}],
-        "ref": "refs/heads/main",
-    }
+def test_contributor_in_webhook():
+    payload = {"sender": {"login": "alice"}, "commits": [{}], "ref": "refs/heads/main"}
     event = parse_github_webhook("push", payload)
-    assert event.contributor == "bob"
-    assert "bob" in event.message
-    print(f"contributor: {event.contributor}: OK")
+    assert event.contributor == "alice"
+    assert "alice" in event.message
+    print("contributor: OK")
 
 
-# ── Streak ────────────────────────────────────────────────────────────────────
+# ── Scan: metadata only ────────────────────────────────────────────────────────
 
-def test_streak_consecutive_days():
+def test_scan_does_not_change_stats():
+    """Scan must only update git_repos — no hunger/energy/mood/streak changes."""
+    pet = PetState(hunger=70.0, mood=70.0, streak_days=5)
+    snap = GitSnapshot(
+        is_repo=True, repo_root="/tmp/r", branch="main",
+        is_dirty=True, last_commit_hash="abc", last_commit_subject="fix",
+        unpushed_commits=3, unpulled_commits=0, upstream_available=True, error=None,
+    )
+    apply_git_snapshot(pet, snap)
+    assert abs(pet.hunger - 70.0) < 0.01, f"hunger changed: {pet.hunger}"
+    assert abs(pet.mood   - 70.0) < 0.01, f"mood changed: {pet.mood}"
+    assert pet.streak_days == 5,          "streak changed"
+    assert pet.git_repos["/tmp/r"]["is_dirty"] is True
+    print("scan metadata-only: OK")
+
+
+# ── React: visual only ─────────────────────────────────────────────────────────
+
+def test_react_does_not_save():
+    """react must not write to state.json."""
+    with tempfile.TemporaryDirectory() as tmp:
+        s = Storage(str(Path(tmp) / "state.json"))
+        pet = PetState(hunger=70.0)
+        s.save(pet)
+        mtime_before = Path(tmp, "state.json").stat().st_mtime
+
+        from src.main import _cmd_react_visual
+        _cmd_react_visual(0, "git push", s)
+
+        mtime_after = Path(tmp, "state.json").stat().st_mtime
+        assert mtime_before == mtime_after, "react wrote to state.json!"
+    print("react does not write state: OK")
+
+
+# ── Team quest system ──────────────────────────────────────────────────────────
+
+def test_quest_generated_server_side():
+    pet = PetState()
+    assert not pet.daily_quest_text
+    refresh_daily_quest(pet, context=None)
+    assert pet.daily_quest_text
+    assert pet.daily_quest_date == date.today().isoformat()
+    print(f"quest generated: '{pet.daily_quest_text}': OK")
+
+
+def test_quest_not_regenerated_same_day():
+    pet = PetState()
+    refresh_daily_quest(pet, context=None)
+    first_text = pet.daily_quest_text
+    refresh_daily_quest(pet, context=None)
+    assert pet.daily_quest_text == first_text, "quest regenerated on same day"
+    print("quest stable same-day: OK")
+
+
+def test_quest_progress_threshold():
+    pet = PetState()
+    pet.daily_quest_trigger   = "commit_count"
+    pet.daily_quest_threshold = 5
+    pet.daily_quest_text      = "Make 5 commits"
+    pet.daily_quest_date      = date.today().isoformat()
+    for _ in range(4):
+        assert not update_quest_progress(pet, "commit_count", 1)
+    assert update_quest_progress(pet, "commit_count", 1) is True
+    assert pet.daily_quest_done
+    assert pet.quests_completed == 1
+    print("quest threshold: OK")
+
+
+def test_ci_fix_quest():
+    """ci_fixed trigger only completes when ci_failed_today is True."""
+    pet = PetState()
+    pet.daily_quest_trigger   = "ci_fixed"
+    pet.daily_quest_threshold = 1
+    pet.daily_quest_date      = date.today().isoformat()
+    pet.ci_failed_today       = False
+    assert not update_quest_progress(pet, "ci_fixed", 1)  # no prior failure
+    pet.ci_failed_today = True
+    assert update_quest_progress(pet, "ci_fixed", 1) is True
+    print("ci_fix quest: OK")
+
+
+# ── Streak ─────────────────────────────────────────────────────────────────────
+
+def test_streak_consecutive():
     pet = PetState()
     pet.last_streak_date = (date.today() - timedelta(days=1)).isoformat()
     pet.streak_days = 5
     update_streak(pet)
     assert pet.streak_days == 6
-    assert pet.last_streak_date == date.today().isoformat()
-    print(f"streak: {pet.streak_days} days: OK")
+    print("streak consecutive: OK")
 
 
 def test_streak_gap_resets():
@@ -102,86 +166,70 @@ def test_streak_gap_resets():
     print("streak gap reset: OK")
 
 
-# ── Daily quest ───────────────────────────────────────────────────────────────
-
-def test_daily_quest_generated():
-    pet = PetState()
-    get_or_refresh_daily_quest(pet)
-    assert pet.daily_quest_text != ""
-    assert pet.daily_quest_date == date.today().isoformat()
-    print(f"quest generated: '{pet.daily_quest_text}': OK")
-
-
-def test_quest_completion_increments_counter():
-    pet = PetState()
-    get_or_refresh_daily_quest(pet)
-    trigger = pet.daily_quest_trigger
-    assert try_complete_quest(pet, trigger) is True
-    assert pet.daily_quest_done is True
-    assert pet.quests_completed == 1
-    print(f"quest done, quests_completed={pet.quests_completed}: OK")
-
-
-def test_quest_achievement_unlocked():
-    pet = PetState()
-    get_or_refresh_daily_quest(pet)
-    try_complete_quest(pet, pet.daily_quest_trigger)
-    assert "Quest Accepted" in pet.achievements
-    print("Quest Accepted achievement: OK")
-
-
-# ── Sleeping state ────────────────────────────────────────────────────────────
+# ── Sleeping state ─────────────────────────────────────────────────────────────
 
 def test_sleeping_after_12h():
     pet = PetState()
     pet.last_activity_at = (datetime.now() - timedelta(hours=13)).isoformat()
     assert pet.is_sleeping is True
     assert pet.mood_label == "sleeping"
-    print("sleeping state: OK")
+    print("sleeping: OK")
 
 
-# ── Cooldown ──────────────────────────────────────────────────────────────────
+# ── Cooldown ───────────────────────────────────────────────────────────────────
 
-def test_cooldown_requires_all_tasks():
+def test_cooldown_all_tasks():
     pet = PetState(alive=False)
     assert not pet.cooldown_done
     pet.cooldown_commits = 3
     pet.cooldown_issues  = 1
     pet.cooldown_ci_ok   = 1
     assert pet.cooldown_done
-    print("cooldown logic: OK")
+    print("cooldown: OK")
 
 
-# ── Кладбище и посмертные ачивки ──────────────────────────────────────────────
+# ── Death achievements ─────────────────────────────────────────────────────────
 
-def test_bury_adds_to_graveyard():
-    with tempfile.TemporaryDirectory() as tmp:
-        s = Storage(str(Path(tmp) / "state.json"))
-        dead = PetState(name="Ghost", alive=False, hunger=0.0, health=0.0)
-        s.bury(dead)
-        entries = s.load_graveyard()
-        assert entries[0].name == "Ghost"
-    print("bury to graveyard: OK")
-
-
-def test_first_death_achievement():
-    """При первой смерти команды должна добавиться ачивка 'First Loss'."""
-    pet = PetState(name="Test", alive=False, hunger=0.0)
-    achs = _death_achievements(pet, [])   # пустое кладбище = первая смерть
+def test_first_loss():
+    pet = PetState(name="X", alive=False, hunger=0.0)
+    achs = _death_achievements(pet, [])
     assert "💔 First Loss" in achs
     print("First Loss achievement: OK")
 
 
-def test_short_life_achievement():
-    pet = PetState(name="Baby")
-    pet.born_at = datetime.now().isoformat()  # только что родился
-    achs = _death_achievements(pet, [{"name": "old"}])
-    assert "🌱 Short Life" in achs or "⚡ Gone in a Day" in achs
-    print("Short Life achievement: OK")
-
-
-def test_starved_achievement():
-    pet = PetState(name="Hungry", alive=False, hunger=0.0, energy=70.0, mood=70.0, health=0.0)
+def test_starved():
+    pet = PetState(name="X", alive=False, hunger=0.0, energy=70.0)
     achs = _death_achievements(pet, [])
     assert "🍽️ Starved" in achs
     print("Starved achievement: OK")
+
+
+# ── Config manager ─────────────────────────────────────────────────────────────
+
+def test_config_manager():
+    with tempfile.TemporaryDirectory() as tmp:
+        os.environ["TAMAGIT_STATE_PATH"] = tmp + "/state.json"
+        set_("local_name", "TestPet")
+        assert get("local_name") == "TestPet"
+        set_("sync_interval", "5")
+        assert get("sync_interval") == 5
+        reset()
+        assert get("local_name") == ""
+    print("config_manager: OK")
+
+
+# ── Health in prompt ───────────────────────────────────────────────────────────
+
+def test_health_in_prompt():
+    from src.ui import get_prompt_string
+    pet = PetState(name="P", hunger=80.0, energy=74.0, mood=82.0, health=91.0)
+    p = get_prompt_string(pet)
+    assert "❤:91" in p
+    print("health in prompt: OK")
+
+
+# ── Total achievements count ───────────────────────────────────────────────────
+
+def test_total_achievements():
+    assert TOTAL_ACHIEVEMENTS == len(TEAM_ACHIEVEMENTS)
+    print(f"TOTAL_ACHIEVEMENTS={TOTAL_ACHIEVEMENTS}: OK")

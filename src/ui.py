@@ -1,12 +1,18 @@
+"""
+Terminal UI — ANSI output for tamagit status, prompt, graveyard.
+
+All display functions respect the local config (theme, show_* flags,
+ascii_style, prompt_format). Import config_manager here to read prefs.
+"""
 from __future__ import annotations
 
 import random
 from datetime import datetime
 from typing import List
 
-from .models import GraveyardEntry, PetState
+from .models import GraveyardEntry, PetState, TOTAL_ACHIEVEMENTS, TEAM_ACHIEVEMENTS
 
-# ── ANSI коды ──────────────────────────────────────────────────────────────────
+# ── ANSI codes ─────────────────────────────────────────────────────────────────
 RESET   = "\033[0m"
 BOLD    = "\033[1m"
 DIM     = "\033[2m"
@@ -18,36 +24,61 @@ MAGENTA = "\033[35m"
 CYAN    = "\033[36m"
 WHITE   = "\033[97m"
 GRAY    = "\033[90m"
-ORANGE  = "\033[38;5;208m"   # 256-цветный оранжевый
+ORANGE  = "\033[38;5;208m"
 
 
-# ── 4-уровневая цветовая схема (0–100, больше = лучше) ───────────────────────
+def _cfg(key: str):
+    """Read local config value (lazy import to avoid circular deps)."""
+    try:
+        from . import config_manager
+        return config_manager.get(key)
+    except Exception:
+        from .config_manager import DEFAULTS
+        return DEFAULTS[key][0]
+
+
+def _is_mono() -> bool:
+    return _cfg("theme") == "monochrome"
+
+
+def _c(*codes: str) -> str:
+    """Return ANSI codes or empty string in monochrome mode."""
+    return "" if _is_mono() else "".join(codes)
+
+
 def stat_color(value: float) -> str:
+    if _is_mono():
+        return ""
     v = int(value)
-    if v >= 75:
-        return GREEN
-    if v >= 50:
-        return YELLOW
-    if v >= 25:
-        return ORANGE
+    if v >= 75: return GREEN
+    if v >= 50: return YELLOW
+    if v >= 25: return ORANGE
     return RED
 
 
-# ── Прогресс-бар ──────────────────────────────────────────────────────────────
 def stat_bar(label: str, value: float, width: int = 22) -> str:
     v      = int(value)
     filled = v * width // 100
-    empty  = width - filled
     color  = stat_color(value)
-    bar    = "█" * filled + "░" * empty
-    return f"  {BOLD}{label:<10}{RESET} {color}[{bar}] {v:3d}%{RESET}"
+    bar    = "█" * filled + "░" * (width - filled)
+    reset  = _c(RESET)
+    bold   = _c(BOLD)
+    return f"  {bold}{label:<10}{reset} {color}[{bar}] {v:3d}%{reset}"
 
 
-# ── ASCII арт по настроению ───────────────────────────────────────────────────
-# Всего 8 состояний: ecstatic, happy, okay, sad, miserable,
-#                    sleeping, on_fire (streak≥7), ghost (мёртв)
+# ── ASCII art (config-aware) ───────────────────────────────────────────────────
 
 def get_pet_ascii(pet: PetState) -> str:
+    style = _cfg("ascii_style")
+    if style == "emoji":
+        icon = {
+            "ecstatic": "😸", "happy": "😺", "okay": "😼", "sad": "😿",
+            "miserable": "🙀", "sleeping": "😴", "on_fire": "🔥😺", "ghost": "👻",
+        }.get(pet.mood_label, "🐱")
+        return f"\n   {icon}\n"
+    if style == "minimal":
+        return _ascii_minimal(pet.mood_label)
+    # standard (default)
     return {
         "ecstatic":  _ascii_ecstatic,
         "happy":     _ascii_happy,
@@ -60,169 +91,107 @@ def get_pet_ascii(pet: PetState) -> str:
     }.get(pet.mood_label, _ascii_okay)()
 
 
+def _ascii_minimal(label: str) -> str:
+    faces = {
+        "ecstatic": "^o^", "happy": "^.^", "okay": "-.-",
+        "sad": "T.T", "miserable": ";_;", "sleeping": "z.z",
+        "on_fire": ">^<", "ghost": "x.x",
+    }
+    return f"\n  /\\_/\\\n ({faces.get(label, '...')})\n   ~\n"
+
+
 def _ascii_ecstatic() -> str:
-    return (
-        f"{GREEN}\n"
-        "    /\\_/\\  \n"
-        "   ( ^o^ )  ~*\n"
-        "    > ~ <   *\n"
-        "   /|   |\\\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(GREEN)}\n    /\\_/\\  \n   ( ^o^ )~*\n    > ~ <  *\n   /|   |\\\n  (_|   |_){_c(RESET)}"
 def _ascii_happy() -> str:
-    return (
-        f"{CYAN}\n"
-        "    /\\_/\\  \n"
-        "   ( ^.^ ) \n"
-        "    > ~ <  \n"
-        "   /|   |\\\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(CYAN)}\n    /\\_/\\  \n   ( ^.^ ) \n    > ~ <  \n   /|   |\\\n  (_|   |_){_c(RESET)}"
 def _ascii_okay() -> str:
-    return (
-        f"{YELLOW}\n"
-        "    /\\_/\\  \n"
-        "   ( -.- ) \n"
-        "    > ~ <  \n"
-        "   /|   |\\\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(YELLOW)}\n    /\\_/\\  \n   ( -.- ) \n    > ~ <  \n   /|   |\\\n  (_|   |_){_c(RESET)}"
 def _ascii_sad() -> str:
-    return (
-        f"{MAGENTA}\n"
-        "    /\\_/\\  \n"
-        "   ( T.T ) \n"
-        "    > ~ <  \n"
-        "   /|   |\\\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(MAGENTA)}\n    /\\_/\\  \n   ( T.T ) \n    > ~ <  \n   /|   |\\\n  (_|   |_){_c(RESET)}"
 def _ascii_miserable() -> str:
-    return (
-        f"{RED}\n"
-        "    /\\_/\\  \n"
-        "   ( ;_; )  .\n"
-        "    >   <   .\n"
-        "   /|   |\\ .\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(RED)}\n    /\\_/\\  \n   ( ;_; )  .\n    >   <   .\n   /|   |\\ .\n  (_|   |_){_c(RESET)}"
 def _ascii_sleeping() -> str:
-    # Питомец засыпает после 12+ часов без активности
-    return (
-        f"{BLUE}\n"
-        "    /\\_/\\  \n"
-        "   ( z.z )  z z\n"
-        "    > ~ <    z\n"
-        "   /|   |\\\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(BLUE)}\n    /\\_/\\  \n   ( z.z )  z\n    > ~ <   \n   /|   |\\\n  (_|   |_){_c(RESET)}"
 def _ascii_on_fire() -> str:
-    # Особое состояние при streak ≥ 7 дней + хорошие статы
-    return (
-        f"{GREEN}\n"
-        "    /\\_/\\  \n"
-        "   (>^.^<)  🔥\n"
-        "    > ~ <  🔥\n"
-        "   /|   |\\\n"
-        f"  (_|   |_){RESET}"
-    )
-
+    return f"{_c(ORANGE)}\n    /\\_/\\  \n   (>^.^<) 🔥\n    > ~ <  🔥\n   /|   |\\\n  (_|   |_){_c(RESET)}"
 def _ascii_ghost() -> str:
-    # После смерти питомец становится призраком
-    return (
-        f"{DIM}{GRAY}\n"
-        "    .--.    \n"
-        "   (x.x)   \n"
-        "    ~~~~   \n"
-        "   /~~~~\\\n"
-        f"  (~~~~~~){RESET}"
-    )
+    return f"{_c(DIM)}{_c(GRAY)}\n    .--.    \n   (x.x)   \n    ~~~~   \n   /~~~~\\\n  (~~~~~~){_c(RESET)}"
 
 
-# ── Кадры анимации вылупления из яйца (для tamagit init) ─────────────────────
 def egg_hatch_frames() -> List[str]:
     return [
-        f"{YELLOW}      _____  \n     /     \\ \n    |       |\n     \\_____/ {RESET}",
-        f"{YELLOW}      _____  \n     / * * \\ \n    |   *   |\n     \\_ * _/ {RESET}",
-        f"{YELLOW}      _____  \n     / ~~~ \\ \n    |  ~~~  |\n     \\ ~~~ / {RESET}",
-        f"{YELLOW}     *  *  * \n      \\|/   \n      ---   {RESET}",
-        f"{CYAN}    /\\_/\\   \n   ( ^.^ ) !!!\n    > ~ <  \n   /|   |\\ \n  (_|   |_){RESET}",
+        f"{_c(YELLOW)}      _____  \n     /     \\ \n    |       |\n     \\_____/ {_c(RESET)}",
+        f"{_c(YELLOW)}      _____  \n     / * * \\ \n    |   *   |\n     \\_ * _/ {_c(RESET)}",
+        f"{_c(YELLOW)}      _____  \n     / ~~~ \\ \n    |  ~~~  |\n     \\ ~~~ / {_c(RESET)}",
+        f"{_c(YELLOW)}     *  *  * \n      \\|/   \n      ---   {_c(RESET)}",
+        f"{_c(CYAN)}    /\\_/\\   \n   ( ^.^ ) !!!\n    > ~ <  \n   /|   |\\ \n  (_|   |_){_c(RESET)}",
     ]
 
 
-# ── Вспомогательная функция ───────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
 def _mood_color(label: str) -> str:
+    if _is_mono(): return ""
     return {
-        "ecstatic":  GREEN,
-        "happy":     CYAN,
-        "okay":      YELLOW,
-        "sad":       MAGENTA,
-        "miserable": RED,
-        "sleeping":  BLUE,
-        "on_fire":   ORANGE,
-        "ghost":     GRAY,
+        "ecstatic": GREEN,  "happy":     CYAN,
+        "okay":     YELLOW, "sad":       MAGENTA,
+        "miserable":RED,    "sleeping":  BLUE,
+        "on_fire":  ORANGE, "ghost":     GRAY,
     }.get(label, RESET)
 
 
 def _time_ago(iso_str: str) -> str:
-    """Конвертирует ISO timestamp в читаемый формат типа '2h ago'."""
-    if not iso_str:
-        return "never"
+    if not iso_str: return "never"
     try:
-        delta = datetime.now() - datetime.fromisoformat(iso_str)
+        delta   = datetime.now() - datetime.fromisoformat(iso_str)
+        minutes = int(delta.total_seconds() / 60)
     except (ValueError, TypeError):
         return "?"
-    minutes = int(delta.total_seconds() / 60)
-    if minutes < 2:
-        return "just now"
-    if minutes < 60:
-        return f"{minutes}m ago"
+    if minutes < 2:   return "just now"
+    if minutes < 60:  return f"{minutes}m ago"
     hours = minutes // 60
-    if hours < 24:
-        return f"{hours}h ago"
+    if hours < 24:    return f"{hours}h ago"
     return f"{hours // 24}d ago"
 
 
-# ── Полная панель статуса ─────────────────────────────────────────────────────
+# ── Full status panel ──────────────────────────────────────────────────────────
+
 def print_status(pet: PetState) -> None:
     is_dead = not pet.alive
-    border  = GRAY if is_dead else WHITE
+    border  = _c(GRAY) if is_dead else _c(WHITE)
+    reset   = _c(RESET)
+    bold    = _c(BOLD)
+    dim     = _c(DIM)
 
-    # ── Шапка ─────────────────────────────────────────────────────────────────
+    # Effective display name (local override or official)
+    try:
+        from . import config_manager
+        display_name = config_manager.effective_name(pet.name)
+    except Exception:
+        display_name = pet.name
+
     print()
-    print(f"{BOLD}{border}  ╔══════════════ TamaGit ══════════════╗{RESET}")
-    print(f"{BOLD}{border}  ║{RESET}  {BOLD}Name  :{RESET}  {pet.name}")
-    print(f"{BOLD}{border}  ║{RESET}  {BOLD}Age   :{RESET}  {pet.age_days} day(s)")
-
-    # Состояние с цветом
+    print(f"{bold}{border}  ╔══════════════ TamaGit ══════════════╗{reset}")
+    print(f"{bold}{border}  ║{reset}  {bold}Name  :{reset}  {display_name}")
+    if display_name != pet.name:
+        print(f"{bold}{border}  ║{reset}  {bold}(official):{reset}  {dim}{pet.name}{reset}")
+    print(f"{bold}{border}  ║{reset}  {bold}Age   :{reset}  {pet.age_days} day(s)")
     mc = _mood_color(pet.mood_label)
-    print(f"{BOLD}{border}  ║{RESET}  {BOLD}State :{RESET}  {mc}{pet.mood_label}{RESET}")
-
-    # Streak — только если больше 0
+    print(f"{bold}{border}  ║{reset}  {bold}State :{reset}  {mc}{pet.mood_label}{reset}")
     if pet.streak_days > 0:
         fire = "🔥" if pet.streak_days >= 7 else "📅"
-        sc   = ORANGE if pet.streak_days >= 7 else CYAN
-        print(f"{BOLD}{border}  ║{RESET}  {BOLD}Streak:{RESET}  {sc}{fire} {pet.streak_days} day(s) in a row{RESET}")
-
-    # Кто последний кормил питомца (командная механика)
+        sc   = _c(ORANGE) if pet.streak_days >= 7 else _c(CYAN)
+        print(f"{bold}{border}  ║{reset}  {bold}Streak:{reset}  {sc}{fire} {pet.streak_days} day(s){reset}")
     if pet.last_fed_by:
-        ago = _time_ago(pet.last_fed_at)
-        print(f"{BOLD}{border}  ║{RESET}  {BOLD}Fed by:{RESET}  {DIM}{pet.last_fed_by} ({ago}){RESET}")
-
+        print(f"{bold}{border}  ║{reset}  {bold}Fed by:{reset}  {dim}{pet.last_fed_by} ({_time_ago(pet.last_fed_at)}){reset}")
     if pet.github_repo:
-        print(f"{BOLD}{border}  ║{RESET}  {BOLD}Repo  :{RESET}  {DIM}{pet.github_repo}{RESET}")
-
-    print(f"{BOLD}{border}  ╚══════════════════════════════════════╝{RESET}")
+        print(f"{bold}{border}  ║{reset}  {bold}Repo  :{reset}  {dim}{pet.github_repo}{reset}")
+    print(f"{bold}{border}  ╚══════════════════════════════════════╝{reset}")
     print()
 
-    # ── ASCII арт ─────────────────────────────────────────────────────────────
-    print(get_pet_ascii(pet))
-    print()
+    if _cfg("show_ascii"):
+        print(get_pet_ascii(pet))
+        print()
 
     if is_dead:
         _print_death_panel(pet)
@@ -231,161 +200,166 @@ def print_status(pet: PetState) -> None:
 
 
 def _print_alive_panel(pet: PetState) -> None:
-    # Прогресс-бары статов
-    print(stat_bar("Hunger",  pet.hunger))
-    print(stat_bar("Energy",  pet.energy))
-    print(stat_bar("Mood",    pet.mood))
-    print(stat_bar("Health",  pet.health))
-    print()
+    reset = _c(RESET)
+    bold  = _c(BOLD)
+    dim   = _c(DIM)
 
-    # Состояние отслеживаемых репозиториев
-    if pet.git_repos:
-        print(f"  {BOLD}Tracked Repos:{RESET}")
-        for repo_key, info in pet.git_repos.items():
+    if _cfg("show_stats"):
+        print(stat_bar("Hunger",  pet.hunger))
+        print(stat_bar("Energy",  pet.energy))
+        print(stat_bar("Mood",    pet.mood))
+        print(stat_bar("Health",  pet.health))
+        print()
+
+    if _cfg("show_repos") and pet.git_repos:
+        print(f"  {bold}Tracked Repos:{reset}")
+        for key, info in pet.git_repos.items():
             branch   = info.get("branch", "?")
             dirty    = info.get("is_dirty", False)
             unpushed = info.get("unpushed", 0)
+            unpulled = info.get("unpulled", 0)
             scanned  = info.get("last_scanned_at", "")
-
-            dirty_icon  = f"{ORANGE}⚠  dirty{RESET}"  if dirty    else f"{GREEN}✅ clean{RESET}"
-            push_warn   = f"  {RED}↑{unpushed} unpushed{RESET}" if unpushed else ""
-            scanned_str = _time_ago(scanned) if scanned else "never"
-
-            # Показываем только имя папки, чтобы не обрезать длинные пути
-            short_key = repo_key.split("/")[-1] if "/" in repo_key else repo_key
-            print(f"    {DIM}{short_key}{RESET} ({branch})  {dirty_icon}{push_warn}  {DIM}scanned {scanned_str}{RESET}")
+            dirty_s  = f"{_c(ORANGE)}⚠  dirty{reset}" if dirty else f"{_c(GREEN)}✅ clean{reset}"
+            push_s   = f"  {_c(RED)}↑{unpushed} unpushed{reset}" if unpushed else ""
+            pull_s   = f"  {_c(YELLOW)}↓{unpulled} behind{reset}" if unpulled else ""
+            short    = key.split("/")[-1] if "/" in key else key
+            print(f"    {dim}{short}{reset} ({branch})  {dirty_s}{push_s}{pull_s}  {dim}scanned {_time_ago(scanned)}{reset}")
         print()
 
-    # Ежедневное задание
-    from datetime import date
-    if pet.daily_quest_text and pet.daily_quest_date == date.today().isoformat():
-        if pet.daily_quest_done:
-            print(f"  {BOLD}🎯 Daily Quest:{RESET}  {GREEN}✅ {pet.daily_quest_text}{RESET}")
-        else:
-            print(f"  {BOLD}🎯 Daily Quest:{RESET}  {YELLOW}{pet.daily_quest_text}{RESET}  {DIM}[in progress]{RESET}")
-        print()
+    if _cfg("show_quest") and pet.daily_quest_text:
+        from datetime import date
+        if pet.daily_quest_date == date.today().isoformat():
+            progress = f"{pet.daily_commit_count if pet.daily_quest_trigger=='commit_count' else pet.daily_issue_count if pet.daily_quest_trigger=='issue_count' else pet.daily_pr_count}/{pet.daily_quest_threshold}"
+            if pet.daily_quest_done:
+                print(f"  {bold}🎯 Team Quest:{reset}  {_c(GREEN)}✅ {pet.daily_quest_text}{reset}")
+            else:
+                print(f"  {bold}🎯 Team Quest:{reset}  {_c(YELLOW)}{pet.daily_quest_text}{reset}  {dim}[{progress}]{reset}")
+            print()
 
-    # Ачивки
-    if pet.achievements:
-        print(f"  {YELLOW}{BOLD}Achievements:{RESET}")
-        for a in pet.achievements:
-            print(f"    🏆  {a}")
-        print()
+    if _cfg("show_achievements"):
+        cnt = len(pet.achievements)
+        if cnt > 0:
+            pct_bar = "█" * (cnt * 10 // TOTAL_ACHIEVEMENTS) + "░" * (10 - cnt * 10 // TOTAL_ACHIEVEMENTS)
+            print(f"  🏆 {_c(YELLOW)}{cnt}/{TOTAL_ACHIEVEMENTS}{reset} achievements  {dim}[{pct_bar}]  tamagit achievements{reset}")
+            print()
 
-    # Последние события
-    if pet.events_log:
-        print(f"  {BOLD}Recent events:{RESET}")
+    if _cfg("show_events") and pet.events_log:
+        print(f"  {bold}Recent events:{reset}")
         for entry in pet.events_log[-5:]:
-            print(f"    {DIM}{entry}{RESET}")
+            print(f"    {dim}{entry}{reset}")
         print()
 
-    print(f"  {DIM}Commands: status · log · scan · graveyard · help{RESET}")
+    print(f"  {dim}status · log · scan · achievements · graveyard · live · help{reset}")
     print()
 
 
 def _print_death_panel(pet: PetState) -> None:
-    print(f"  {RED}{BOLD}💀  Your team pet has died.{RESET}")
-    print(f"  {DIM}Reason: {pet.death_reason}{RESET}")
+    reset = _c(RESET)
+    bold  = _c(BOLD)
+    dim   = _c(DIM)
+    red   = _c(RED)
+    green = _c(GREEN)
+    gray  = _c(GRAY)
+
+    print(f"  {red}{bold}💀  Your team pet has died.{reset}")
+    print(f"  {dim}Reason: {pet.death_reason}{reset}")
     print()
-    print(f"  {BOLD}Team must complete these tasks to adopt a new pet:{RESET}")
+    print(f"  {bold}The team must complete these tasks before a new pet hatches:{reset}")
 
     def task_line(done: bool, label: str, progress: str) -> str:
-        icon = f"{GREEN}✅{RESET}" if done else f"{GRAY}☐ {RESET}"
-        return f"    {icon}  {label}  {DIM}[{progress}]{RESET}"
+        icon = f"{green}✅{reset}" if done else f"{gray}☐ {reset}"
+        return f"    {icon}  {label}  {dim}[{progress}]{reset}"
 
     print(task_line(pet.cooldown_commits >= 3, "Make 3 commits",  f"{pet.cooldown_commits}/3"))
     print(task_line(pet.cooldown_issues >= 1,  "Close 1 issue",   f"{pet.cooldown_issues}/1"))
     print(task_line(pet.cooldown_ci_ok >= 1,   "CI success once", f"{pet.cooldown_ci_ok}/1"))
     print()
-
     if pet.cooldown_done:
-        print(f"  {GREEN}{BOLD}All tasks done!  Run: tamagit init{RESET}")
+        print(f"  {green}{bold}All tasks done — new pet will hatch on next GitHub event!{reset}")
     else:
         remaining = []
-        if pet.cooldown_commits < 3:
-            remaining.append(f"{3 - pet.cooldown_commits} commit(s)")
-        if pet.cooldown_issues < 1:
-            remaining.append("1 issue to close")
-        if pet.cooldown_ci_ok < 1:
-            remaining.append("1 CI success")
-        print(f"  {DIM}Still needed: {', '.join(remaining)}.{RESET}")
+        if pet.cooldown_commits < 3: remaining.append(f"{3 - pet.cooldown_commits} commit(s)")
+        if pet.cooldown_issues < 1:  remaining.append("close 1 issue")
+        if pet.cooldown_ci_ok < 1:   remaining.append("1 CI success")
+        print(f"  {dim}Still needed: {', '.join(remaining)}.{reset}")
     print()
-    print(f"  {DIM}Run 'tamagit graveyard' to see fallen pets.{RESET}")
+    print(f"  {dim}When done, the server auto-creates a new pet. Run 'tamagit sync'.{reset}")
+    print(f"  {dim}Run 'tamagit graveyard' to see all fallen pets.{reset}")
     print()
 
 
-# ── Кладбище ──────────────────────────────────────────────────────────────────
 def print_graveyard(entries: List[GraveyardEntry]) -> None:
+    reset = _c(RESET)
+    bold  = _c(BOLD)
+    dim   = _c(DIM)
+    gray  = _c(GRAY)
+    red   = _c(RED)
+    yellow= _c(YELLOW)
+
     print()
-    print(f"{BOLD}{GRAY}  ══════════════ ⚰  Graveyard  ⚰ ══════════════{RESET}")
+    print(f"{bold}{gray}  ══════════════ ⚰  Graveyard  ⚰ ══════════════{reset}")
     print()
     if not entries:
-        print(f"  {DIM}No pets have died yet. Keep committing!{RESET}")
+        print(f"  {dim}No pets have died yet. Keep committing!{reset}")
         print()
         return
-
-    tombstone = [
-        "    .------.",
-        "    | R.I.P |",
-        "    |_______|",
-        "   /         \\",
-        "  |___________|",
-    ]
-
+    tombstone = ["    .------.", "    | R.I.P |", "    |_______|", "   /         \\", "  |___________|"]
     for i, e in enumerate(entries, 1):
+        for line in tombstone:
+            print(f"  {dim}{gray}{line}{reset}")
         born = e.born_at[:10] if e.born_at else "?"
         died = e.died_at[:10] if e.died_at else "?"
-        for line in tombstone:
-            print(f"  {DIM}{GRAY}{line}{RESET}")
-        print(f"  {BOLD}{e.name}{RESET}  {DIM}(lived {e.age_days} day(s)){RESET}")
-        print(f"  {DIM}{born}  →  {died}{RESET}")
-        print(f"  \"{RED}{e.death_reason}{RESET}\"")
+        print(f"  {bold}{e.name}{reset}  {dim}(lived {e.age_days} day(s)){reset}")
+        print(f"  {dim}{born}  →  {died}{reset}")
+        print(f"  \"{red}{e.death_reason}{reset}\"")
         if e.achievements:
-            print(f"  {YELLOW}🏆  {', '.join(e.achievements)}{RESET}")
-        if i < len(entries):
-            print()
-
+            print(f"  {yellow}{', '.join(e.achievements[:4])}{reset}")
+        if i < len(entries): print()
     print()
-    print(f"  {DIM}Total fallen: {len(entries)}{RESET}")
+    print(f"  {dim}Total fallen: {len(entries)}{reset}")
     print()
 
 
-# ── Строка для bash prompt ─────────────────────────────────────────────────────
 def get_prompt_string(pet: PetState) -> str:
-    """Однострочная строка для встраивания в PS1."""
-    # Иконки для каждого настроения
-    icon_map = {
-        "ecstatic":  "^o^",
-        "happy":     "^.^",
-        "okay":      "-.-",
-        "sad":       "T.T",
-        "miserable": ";_;",
-        "sleeping":  "z.z",
-        "on_fire":   ">^<",  # возбуждённая морда для streak-режима
-        "ghost":     "x.x",
-    }
-    if not pet.alive:
-        return f"{GRAY}[{pet.name}(x.x) DEAD]{RESET}"
+    """One-line string for embedding in PS1. Respects prompt_format config."""
+    try:
+        from . import config_manager
+        display_name = config_manager.effective_name(pet.name)
+        fmt = config_manager.get("prompt_format")
+    except Exception:
+        display_name = pet.name
+        fmt = "full"
 
+    if not pet.alive:
+        return f"{_c(GRAY)}[{display_name}(x.x) DEAD]{_c(RESET)}"
+
+    icon_map = {
+        "ecstatic": "^o^", "happy": "^.^", "okay": "-.-",
+        "sad": "T.T", "miserable": ";_;", "sleeping": "z.z",
+        "on_fire": ">^<", "ghost": "x.x",
+    }
     icon  = icon_map.get(pet.mood_label, "...")
     avg   = (pet.hunger + pet.energy + pet.mood) / 3
     color = stat_color(avg)
-    h, e, m = int(pet.hunger), int(pet.energy), int(pet.mood)
-    return f"{color}[{pet.name}({icon}) H:{h} E:{e} M:{m}]{RESET}"
+    reset = _c(RESET)
+
+    h, e, m, hp = int(pet.hunger), int(pet.energy), int(pet.mood), int(pet.health)
+
+    if fmt == "minimal":
+        return f"{color}{icon}{reset}"
+    if fmt == "compact":
+        return f"{color}[{display_name}({icon}) {int(avg)}%]{reset}"
+    # full (default): show all four stats including health
+    return f"{color}[{display_name}({icon}) H:{h} E:{e} M:{m} ❤:{hp}]{reset}"
 
 
-# ── Сообщения призрака (30% при dead-состоянии) ───────────────────────────────
+# ── Ghost messages ─────────────────────────────────────────────────────────────
 _GHOST_LINES = [
-    "you abandoned me...",
-    "the CI was always red...",
-    "you never merged that PR...",
-    "boo. make some commits.",
-    "I haunt your git log.",
-    "I just wanted clean issues...",
-    "commit. at least once a week.",
-    "even /dev/null got more attention.",
-    "my issues are still open.",
-    "the pipeline is still broken.",
+    "you abandoned me...", "the CI was always red...",
+    "you never merged that PR...", "boo. make some commits.",
+    "I haunt your git log.", "I just wanted clean issues...",
+    "commit. at least once a week.", "even /dev/null got more attention.",
+    "my issues are still open.", "the pipeline is still broken.",
 ]
 
 
@@ -393,4 +367,4 @@ def maybe_ghost_message(pet: PetState) -> str | None:
     if pet.alive or random.random() > 0.30:
         return None
     msg = random.choice(_GHOST_LINES)
-    return f"\n  {DIM}{GRAY}~(*-*)~ {pet.name}: {msg}{RESET}\n"
+    return f"\n  {_c(DIM)}{_c(GRAY)}~(*-*)~ {pet.name}: {msg}{_c(RESET)}\n"
