@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "*" ]   # запускается при пуше в любую ветку
+    branches: [ "*" ]
   pull_request:
     branches: [ "*" ]
 
@@ -14,4 +14,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Always succeed
-        run: echo "CI passed! ���"
+        run: echo "CI passed!"
