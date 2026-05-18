@@ -1,12 +1,13 @@
 """
 TamaGit Live TUI  (tamagit live)
 ════════════════════════════════
-Требует: textual (уже в зависимостях)
-Управление: Q — выход, R — принудительное обновление
+Requires: pip install textual
 
-Каждые 5 секунд читает ~/.tamagit/state.json.
-При новом событии в event_log — питомец останавливается, проигрывает
-реакцию (~4 секунды), потом возобновляет ходьбу.
+Every 5 s reads state from VPS (if TAMAGIT_VPS_URL is set)
+or from local state.json. Detects new events and plays a
+reaction animation (pet stops walking, reacts, then resumes).
+
+Controls: Q = quit  R = force refresh
 """
 from __future__ import annotations
 
@@ -24,34 +25,48 @@ from .models import PetState
 from .storage import Storage
 from .ui import _time_ago
 
-# ── Константы анимации ────────────────────────────────────────────────────────
-MAX_WALK_OFFSET = 9   # максимальный сдвиг питомца влево в ячейках
-TOTAL_ACHIEVEMENTS = 13
+MAX_WALK = 9   # cells of horizontal movement
 
-# Скорость ходьбы (ячеек за тик ~700 мс) — разная для каждого настроения
-_WALK_SPEED: dict[str, float] = {
-    "ecstatic":  0.55,
-    "happy":     0.35,
-    "okay":      0.22,
-    "sad":       0.12,
-    "miserable": 0.06,
-    "sleeping":  0.0,    # не ходит, только ZZZ
-    "on_fire":   0.65,
-    "ghost":     0.09,
+# Walking speed per mood (cells per tick at ~700 ms)
+_WALK_SPEED = {
+    "ecstatic": 0.55, "happy": 0.35, "okay": 0.22, "sad": 0.12,
+    "miserable": 0.06, "sleeping": 0.0, "on_fire": 0.65, "ghost": 0.09,
 }
 
-_MOOD_COLOR: dict[str, str] = {
-    "ecstatic": "bright_green", "happy":     "cyan",
-    "okay":     "yellow",       "sad":       "magenta",
-    "miserable":"red",          "sleeping":  "blue",
-    "on_fire":  "orange1",      "ghost":     "grey50",
-    "rx_push":  "bright_green", "rx_pr":     "bright_cyan",
-    "rx_fail":  "red",          "rx_quest":  "yellow",
+_MOOD_COLOR = {
+    "ecstatic": "green",  "happy":     "cyan",
+    "okay":     "yellow", "sad":       "magenta",
+    "miserable":"red",    "sleeping":  "blue",
+    "on_fire":  "orange1","ghost":     "grey50",
+    "rx_push":  "green",  "rx_pr":     "cyan",
+    "rx_fail":  "red",    "rx_quest":  "yellow",
 }
 
-# ── Конструктор кадра ─────────────────────────────────────────────────────────
+_CSS = """
+Screen { background: #0d0d0d; }
+#title-bar {
+    background: #16213e; height: 3;
+    content-align: center middle; border: solid #7c3aed;
+}
+#main-area { height: 1fr; }
+#left-panel {
+    width: 46; border: solid #374151;
+    background: #111111; padding: 1 0;
+}
+#right-panel {
+    width: 1fr; border: solid #374151;
+    background: #111111; padding: 1 2;
+}
+#log-panel {
+    height: 9; border: solid #1f2937;
+    background: #0a0a0a; padding: 0 2;
+}
+Footer { background: #16213e; }
+"""
+
+# ── Frame builders ─────────────────────────────────────────────────────────────
+
 def _cat(face: str, sfx: str = "") -> str:
-    """Собирает стандартный 5-строчный ASCII-кадр кошки."""
     return (
         f"    /\\_/\\  \n"
         f"   {face}\n"
@@ -60,38 +75,17 @@ def _cat(face: str, sfx: str = "") -> str:
         f"  (_|   |_)"
     )
 
-# ── Кадры ходьбы ──────────────────────────────────────────────────────────────
-# Каждый список: [нейтральный, смотрит_вправо, смотрит_влево]
-# При движении вправо — правый глаз ">" (смотрит куда идёт)
-# При движении влево  — левый глаз "<"
+def _cat_min(face: str) -> str:
+    """Minimal 3-line style."""
+    return f" /\\_/\\\n({face})\n  ~  "
 
-_WALK: dict[str, list[str]] = {
-    "ecstatic": [
-        _cat("( ^o^ )", "~"),
-        _cat("( >o^ )", "*"),
-        _cat("( ^o< )", "*"),
-    ],
-    "happy": [
-        _cat("( ^.^ )"),
-        _cat("( >.^ )"),
-        _cat("( ^.< )"),
-    ],
-    "okay": [
-        _cat("( -.- )"),
-        _cat("( >.- )"),
-        _cat("( -.< )"),
-    ],
-    "sad": [
-        _cat("( T.T )"),
-        _cat("( T.- )"),
-        _cat("( -.T )"),
-    ],
-    "miserable": [
-        _cat("( ;_; )", " ."),
-        _cat("( ;_. )", "."),
-        _cat("( ._; )", " ."),
-    ],
-    # Ниже — mood'ы с особым движением (фаза = простой цикл, не направление)
+# Standard walking frames [neutral, right, left]
+_WALK = {
+    "ecstatic": [_cat("( ^o^ )", "~"), _cat("( >o^ )", "*"), _cat("( ^o< )", "*")],
+    "happy":    [_cat("( ^.^ )"),      _cat("( >.^ )"),       _cat("( ^.< )")],
+    "okay":     [_cat("( -.- )"),      _cat("( >.- )"),       _cat("( -.< )")],
+    "sad":      [_cat("( T.T )"),      _cat("( T.- )"),       _cat("( -.T )")],
+    "miserable":[_cat("( ;_; )", " ."),_cat("( ;_. )", "."),  _cat("( ._; )", " .")],
     "sleeping": [
         "    /\\_/\\  \n   ( z.z )  z\n    > ~ <   \n   /|   |\\\n  (_|   |_)",
         "    /\\_/\\  \n   ( z.z )   \n    > ~ <   \n   /|   |\\\n  (_|   |_)",
@@ -108,101 +102,85 @@ _WALK: dict[str, list[str]] = {
     ],
 }
 
-# Фреймы реакций — играются на месте (ходьба приостановлена)
-_REACTIONS: dict[str, list[str]] = {
-    "rx_push": [
-        _cat("( *o* )", "nom"),   # ест/доволен
-        _cat("( ^o^ )", "!  "),
-        _cat("( ^.^ )", "~  "),
-    ],
-    "rx_pr": [
-        _cat("( ^o^ )", "✓  "),
-        _cat("(>^.^<)", "!  "),
-        _cat("( ^.^ )", "   "),
-    ],
-    "rx_fail": [
-        _cat("( ;_; )", "!  "),   # расстроен
-        _cat("( T.T )", "   "),
-        _cat("( T.T )", ".  "),
-    ],
-    "rx_quest": [
-        _cat("( ^o^ )", "🎯"),
-        _cat("( ^.^ )", "✓ "),
-        _cat("( ^.^ )", "  "),
-    ],
+# Minimal walking frames
+_WALK_MIN = {
+    "ecstatic": ["^o^", ">o^", "^o<"],
+    "happy":    ["^.^", ">.^", "^.<"],
+    "okay":     ["-.-", ">.-", "-.< "],
+    "sad":      ["T.T", "T.-", "-.T"],
+    "miserable":["?_?", ";_.","._?"],
+    "sleeping": ["z.z", "z.z", "z.z"],
+    "on_fire":  [">^.^<",">>^.","^.^<<"],
+    "ghost":    ["x.x", "x.x", "x.x"],
 }
 
+# Reaction frames (played in-place while walking pauses)
+_REACTIONS = {
+    "rx_push":  [_cat("( *o* )", "nom"), _cat("( ^o^ )", "!  "), _cat("( ^.^ )", "~  ")],
+    "rx_pr":    [_cat("( ^o^ )", "✓  "), _cat("(>^.^<)", "!  "), _cat("( ^.^ )", "   ")],
+    "rx_fail":  [_cat("( ;_; )", "!  "), _cat("( T.T )", "   "), _cat("( T.T )", ".  ")],
+    "rx_quest": [_cat("( ^o^ )", "🎯"), _cat("( ^.^ )", "✓ "), _cat("( ^.^ )", "  ")],
+}
+_REACTIONS_MIN = {
+    "rx_push":  ["*o*", "^o^", "^.^"],
+    "rx_pr":    ["^o^", ">^<", "^.^"],
+    "rx_fail":  [";_;", "T.T", "T.T"],
+    "rx_quest": ["^o^", "^.^", "^.^"],
+}
 _SIMPLE_CYCLE = {"sleeping", "on_fire", "ghost"}
 
 
-def _walk_frame(mood: str, direction: int, phase: int, tick: int) -> str:
-    """Выбирает кадр для текущего состояния ходьбы.
+def _get_frame(mood: str, direction: int, phase: int, tick: int, style: str) -> str:
+    if style == "minimal":
+        key = mood if mood not in _WALK_MIN else mood
+        frames = _WALK_MIN.get(key, _WALK_MIN["happy"])
+        if mood in _SIMPLE_CYCLE:
+            return _cat_min(frames[tick // 2 % len(frames)])
+        return _cat_min(frames[0] if phase == 0 else (frames[1] if direction >= 0 else frames[2]))
+    if style == "emoji":
+        e_map = {"ecstatic":"😸","happy":"😺","okay":"😼","sad":"😿",
+                 "miserable":"🙀","sleeping":"😴","on_fire":"🔥😺","ghost":"👻"}
+        return f"\n   {e_map.get(mood,'🐱')}\n"
 
-    Для sleeping/on_fire/ghost — простой цикл по тикам.
-    Для остальных — направленные кадры (нейтральный / вправо / влево).
-    """
+    # standard
     frames = _WALK.get(mood, _WALK["happy"])
     if mood in _SIMPLE_CYCLE:
         return frames[(tick // 2) % len(frames)]
-    if phase == 0:
-        return frames[0]  # нейтральный
-    return frames[1] if direction >= 0 else frames[2]
+    return frames[0] if phase == 0 else (frames[1] if direction >= 0 else frames[2])
 
 
-def _apply_offset(frame: str, offset: int) -> str:
-    """Добавляет отступ к каждой строке — эффект движения по горизонтали."""
+def _get_rx_frame(key: str, tick: int, style: str) -> str:
+    if style == "minimal":
+        frames = _REACTIONS_MIN.get(key, _REACTIONS_MIN["rx_push"])
+        return _cat_min(frames[(tick // 2) % len(frames)])
+    if style == "emoji":
+        e_map = {"rx_push":"😋","rx_pr":"🎉","rx_fail":"😱","rx_quest":"🎯"}
+        return f"\n   {e_map.get(key,'🐱')}\n"
+    frames = _REACTIONS.get(key, _REACTIONS["rx_push"])
+    return frames[(tick // 2) % len(frames)]
+
+
+def _offset_frame(frame: str, offset: int) -> str:
     pad = " " * max(0, offset)
     return "\n".join(pad + line for line in frame.split("\n"))
 
 
-# ── CSS ───────────────────────────────────────────────────────────────────────
-_CSS = """
-Screen { background: #0d0d0d; }
+def _sbar(label: str, value: float, width: int = 18) -> str:
+    v      = int(value)
+    filled = v * width // 100
+    bar    = "█" * filled + "░" * (width - filled)
+    if v >= 75:   color = "green"
+    elif v >= 50: color = "yellow"
+    elif v >= 25: color = "orange1"
+    else:         color = "red"
+    return f"[bold]{label:<8}[/bold] [{color}][{bar}] {v:3d}%[/{color}]"
 
-#title-bar {
-    background: #16213e;
-    height: 3;
-    content-align: center middle;
-    border: solid #7c3aed;
-}
-
-#main-area { height: 1fr; }
-
-#left-panel {
-    width: 44;
-    border: solid #374151;
-    background: #111111;
-    padding: 1 0;
-}
-
-#right-panel {
-    width: 1fr;
-    border: solid #374151;
-    background: #111111;
-    padding: 1 2;
-}
-
-#log-panel {
-    height: 9;
-    border: solid #1f2937;
-    background: #0a0a0a;
-    padding: 0 2;
-}
-
-Footer { background: #16213e; }
-"""
-
-
-# ── Приложение ────────────────────────────────────────────────────────────────
 
 class TamaGitApp(App):
-    """Live TUI — питомец ходит по экрану в реальном времени.
+    """Live TUI — animated team pet that updates every 5 seconds.
 
-    Архитектура:
-    - _tick() каждые 700 мс: обновляет позицию и кадр анимации
-    - _poll() каждые 5 с: читает state.json, при новом событии запускает реакцию
-    - Реакция: питомец останавливается, проигрывает 3 кадра (~4 с), продолжает ходить
-    - Событие обнаруживается по изменению ПОСЛЕДНЕЙ строки events_log
+    If TAMAGIT_VPS_URL is configured, polls /state directly from VPS
+    (no need for local daemon sync). Otherwise reads local state.json.
     """
 
     CSS = _CSS
@@ -211,24 +189,21 @@ class TamaGitApp(App):
     def __init__(self) -> None:
         super().__init__()
         self._storage = Storage()
-        self._vps_url = os.environ.get("TAMAGIT_VPS_URL", "").rstrip("/")
+        from . import config_manager as _cfg
+        self._vps_url = _cfg.effective_vps_url()
+        self._style   = _cfg.get("ascii_style") or "standard"
+
         self._pet: Optional[PetState] = None
+        self._tick    = 0
+        self._walk_pos: float = 4.0
+        self._walk_dir: int   = 1
+        self._walk_phase: int = 0
 
-        # Состояние ходьбы
-        self._tick_n: int = 0
-        self._walk_pos: float = 4.0     # 0 … MAX_WALK_OFFSET
-        self._walk_dir: int = 1          # +1 вправо, -1 влево
-        self._walk_phase: int = 0        # 0 нейтральный, 1 шаг
+        self._reaction:   str = ""
+        self._rx_tick:    int = 0
+        self._rx_total:   int = 6
 
-        # Состояние реакции
-        self._reaction: str = ""
-        self._rx_tick: int = 0           # индекс тика внутри реакции
-        self._rx_total: int = 6          # сколько тиков длится реакция
-
-        # Детектор новых событий
         self._last_event: str = ""
-
-    # ── Инициализация ─────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
         yield Static("", id="title-bar")
@@ -244,41 +219,28 @@ class TamaGitApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._load()
-        self.set_interval(0.7, self._tick)
-        self.set_interval(5.0, self._poll)
+        self._load(); self.set_interval(0.7, self._tick_fn); self.set_interval(5.0, self._poll)
 
-    # ── Анимационный тик ──────────────────────────────────────────────────────
+    # ── Animation tick ─────────────────────────────────────────────────────────
 
-    def _tick(self) -> None:
-        """700 мс тик: движение/кадр реакции → обновление ASCII."""
-        self._tick_n += 1
+    def _tick_fn(self) -> None:
+        self._tick += 1
         if self._pet is None:
             return
 
         if self._reaction:
-            # Реакция активна — шагаем по кадрам, позиция не меняется
             self._rx_tick += 1
             if self._rx_tick >= self._rx_total:
-                self._reaction = ""
-                self._rx_tick = 0
+                self._reaction = ""; self._rx_tick = 0
         else:
-            # Нормальная ходьба
-            mood = self._pet.mood_label
+            mood  = self._pet.mood_label
             speed = _WALK_SPEED.get(mood, 0.3)
             self._walk_pos += speed * self._walk_dir
-
-            if self._walk_pos >= MAX_WALK_OFFSET:
-                self._walk_pos = MAX_WALK_OFFSET
-                self._walk_dir = -1
-                self._walk_phase = 1  # начать шаг в новом направлении
+            if self._walk_pos >= MAX_WALK:
+                self._walk_pos = MAX_WALK; self._walk_dir = -1; self._walk_phase = 1
             elif self._walk_pos <= 0.0:
-                self._walk_pos = 0.0
-                self._walk_dir = 1
-                self._walk_phase = 1
-
-            # Чередование нейтральный / шаговый кадр каждые 2 тика
-            if self._tick_n % 2 == 0:
+                self._walk_pos = 0.0; self._walk_dir = 1; self._walk_phase = 1
+            if self._tick % 2 == 0:
                 self._walk_phase = 1 - self._walk_phase
 
         self._render_art()
@@ -286,147 +248,129 @@ class TamaGitApp(App):
     def _render_art(self) -> None:
         if self._pet is None:
             return
-        mood = self._pet.mood_label
+        mood   = self._pet.mood_label
         offset = int(self._walk_pos)
 
         if self._reaction:
-            # Реакция — специальный кадр, позиция фиксирована
-            frames = _REACTIONS.get(self._reaction, [_cat("( ^.^ )")])
-            frame = frames[(self._rx_tick // 2) % len(frames)]
+            frame = _get_rx_frame(self._reaction, self._rx_tick, self._style)
             color = _MOOD_COLOR.get(self._reaction, "white")
         else:
-            frame = _walk_frame(mood, self._walk_dir, self._walk_phase, self._tick_n)
+            frame = _get_frame(mood, self._walk_dir, self._walk_phase, self._tick, self._style)
             color = _MOOD_COLOR.get(mood, "white")
 
-        art = _apply_offset(frame, offset)
+        # Emoji style doesn't need offset (it's a single emoji line)
+        art = frame if self._style == "emoji" else _offset_frame(frame, offset)
         self.query_one("#pet-art", Static).update(f"[{color}]{art}[/{color}]")
 
-    # ── Опрос state.json ──────────────────────────────────────────────────────
+    # ── State polling ──────────────────────────────────────────────────────────
 
     def _load(self) -> None:
-        if not self._storage.is_initialized():
-            self.query_one("#title-bar", Static).update(
-                "[bold red]No pet.[/bold red]  Run [cyan]tamagit init[/cyan] first."
-            )
-            return
-        self._pet = self._storage.load()
-        self._last_event = self._pet.events_log[-1] if self._pet.events_log else ""
-        self._refresh_ui()
-
-    def _poll(self) -> None:
-        """Каждые 5 с: читаем state — либо с VPS напрямую, либо из локального файла.
-
-        Если TAMAGIT_VPS_URL задан — опрашиваем GET /state на VPS.
-        Это даёт по-настоящему реальное время без ручного sync.
-        Если VPS недоступен — тихо переключаемся на локальный файл.
-        """
         if self._vps_url:
             try:
                 resp = urllib.request.urlopen(f"{self._vps_url}/state", timeout=3)
                 data = json.loads(resp.read().decode())
                 pet  = PetState.from_dict(data)
+                self._pet = pet
             except Exception:
-                # VPS недоступен — fallback на локальный файл без сообщения об ошибке
-                if not self._storage.is_initialized():
-                    return
-                pet = self._storage.load()
-        elif not self._storage.is_initialized():
-            return
-        else:
-            pet = self._storage.load()
+                if self._storage.is_initialized():
+                    self._pet = self._storage.load()
+        elif self._storage.is_initialized():
+            self._pet = self._storage.load()
 
-        # Сравниваем последнее событие — НЕ last_updated (тот меняется при любом decay)
-        current = pet.events_log[-1] if pet.events_log else ""
+        if self._pet:
+            self._last_event = self._pet.events_log[-1] if self._pet.events_log else ""
+            self._refresh_ui()
+        else:
+            self.query_one("#title-bar", Static).update(
+                "[bold red]No pet.[/bold red]  Run [cyan]tamagit init[/cyan] on the server."
+            )
+
+    def _poll(self) -> None:
+        """Every 5 s: fetch new state, trigger animation if new event detected."""
+        old_style = self._style
+        from . import config_manager as _cfg
+        self._style   = _cfg.get("ascii_style") or "standard"
+        self._vps_url = _cfg.effective_vps_url()
+
+        prev_pet = self._pet
+        self._load()
+        if self._pet is None:
+            return
+
+        # Detect new events by comparing last log entry
+        current = self._pet.events_log[-1] if self._pet.events_log else ""
         if current and current != self._last_event:
             self._last_event = current
-            self._trigger_reaction(current)
+            self._trigger(current)
 
-        self._pet = pet
-        self._refresh_ui()
-
-    def _trigger_reaction(self, event_text: str) -> None:
-        """Определяет тип реакции по тексту события и запускает её."""
+    def _trigger(self, event_text: str) -> None:
         evt = event_text.lower()
         if any(w in evt for w in ("pushed", "commit", "nom nom")):
-            self._start_reaction("rx_push", f"🍖 Nom nom! Team pushed!")
+            self._react("rx_push", "🍖 Team pushed! Nom nom!")
         elif "merged pr" in evt:
-            self._start_reaction("rx_pr",   "✨ PR merged! Health bonus!")
-        elif "quest done" in evt:
-            self._start_reaction("rx_quest", "🎯 Daily quest complete!")
+            self._react("rx_pr", "✨ PR merged! Health bonus!")
+        elif "quest complete" in evt:
+            self._react("rx_quest", "🎯 Team quest complete!")
         elif "achievement" in evt:
             label = event_text.split(":")[-1].strip()[:40]
-            self._start_reaction("rx_quest", f"🏆 {label}")
+            self._react("rx_quest", f"🏆 {label}")
         elif "failed" in evt or ("ci" in evt and "fail" in evt):
-            self._start_reaction("rx_fail", "💔 CI failed... pet is stressed")
+            self._react("rx_fail", "💔 CI failed... pet is stressed")
 
-    def _start_reaction(self, key: str, message: str, ticks: int = 6) -> None:
-        """Останавливает ходьбу и запускает реакцию на N тиков."""
-        self._reaction  = key
-        self._rx_tick   = 0
-        self._rx_total  = ticks
-        # _walk_pos не меняется → после реакции ходьба возобновится с той же точки
-        if message:
+    def _react(self, key: str, msg: str, ticks: int = 6) -> None:
+        self._reaction = key; self._rx_tick = 0; self._rx_total = ticks
+        if msg:
             sev = "warning" if key == "rx_fail" else "information"
-            self.notify(message, severity=sev, timeout=4)
+            self.notify(msg, severity=sev, timeout=4)
 
-    # ── Обновление виджетов ───────────────────────────────────────────────────
+    # ── Widget updates ─────────────────────────────────────────────────────────
 
     def _refresh_ui(self) -> None:
         if self._pet is None:
             return
-        self._update_title()
-        self._update_stats()
-        self._update_quest()
-        self._update_team()
-        self._update_achievements()
-        self._update_log()
-        # ASCII-арт обновляется в _render_art (вызывается из _tick)
+        self._update_title(); self._update_stats(); self._update_quest()
+        self._update_team(); self._update_achievements(); self._update_log()
 
     def _update_title(self) -> None:
-        p = self._pet
+        p      = self._pet
+        from . import config_manager as _cfg
+        name   = _cfg.effective_name(p.name)
         streak = f"  🔥 {p.streak_days}d" if p.streak_days >= 3 else ""
-        repo   = f"  [dim]{p.github_repo}[/dim]" if p.github_repo else ""
-        src_tag = f"  [dim][VPS ↻5s][/dim]" if self._vps_url else "  [dim][local][/dim]"
+        # Show data source so user knows if they're seeing live VPS or local cache
+        src    = "[dim][VPS ↻5s][/dim]" if self._vps_url else "[dim][local][/dim]"
         self.query_one("#title-bar", Static).update(
             f"[bold][purple]TamaGit[/purple][/bold]  •  "
-            f"[cyan]{p.name}[/cyan]  •  day {p.age_days}"
-            f"[orange1]{streak}[/orange1]"
-            f"[italic]  {p.mood_label}[/italic]"
-            f"{repo}"
-            f"{src_tag}"
+            f"[cyan]{name}[/cyan]  •  day {p.age_days}"
+            f"[orange1]{streak}[/orange1]  •  "
+            f"[italic]{p.mood_label}[/italic]  •  {src}"
         )
 
     def _update_stats(self) -> None:
-        p = self._pet
-        lines = [
-            _sbar("Hunger",  p.hunger),
-            _sbar("Energy",  p.energy),
-            _sbar("Mood",    p.mood),
-            _sbar("Health",  p.health),
-        ]
+        p     = self._pet
+        lines = [_sbar("Hunger",p.hunger), _sbar("Energy",p.energy),
+                 _sbar("Mood",  p.mood),   _sbar("Health",p.health)]
         if not p.alive:
-            lines += [
-                "",
-                "[bold red]💀 Pet is dead[/bold red]",
-                f"  commits {p.cooldown_commits}/3 "
-                f"• issues {p.cooldown_issues}/1 "
-                f"• CI {p.cooldown_ci_ok}/1",
-            ]
+            lines += ["", "[bold red]💀 Pet is dead[/bold red]",
+                      f"  commits {p.cooldown_commits}/3 • "
+                      f"issues {p.cooldown_issues}/1 • CI {p.cooldown_ci_ok}/1"]
         self.query_one("#stats", Static).update("\n".join(lines))
 
     def _update_quest(self) -> None:
         p = self._pet
         if not p.daily_quest_text or p.daily_quest_date != date.today().isoformat():
-            self.query_one("#quest", Static).update("[dim]No quest yet today.[/dim]")
-            return
+            self.query_one("#quest", Static).update("[dim]No quest yet today.[/dim]"); return
         if p.daily_quest_done:
             txt = f"[green]🎯 ✅ {p.daily_quest_text}[/green]"
         else:
-            txt = f"[yellow]🎯 {p.daily_quest_text}[/yellow] [dim](in progress)[/dim]"
+            c = p.daily_commit_count if p.daily_quest_trigger == "commit_count" else \
+                p.daily_issue_count  if p.daily_quest_trigger == "issue_count"  else \
+                p.daily_pr_count
+            txt = f"[yellow]🎯 {p.daily_quest_text}[/yellow] [dim]({c}/{p.daily_quest_threshold})[/dim]"
         self.query_one("#quest", Static).update(txt)
 
     def _update_team(self) -> None:
         p     = self._pet
+        from . import config_manager as _cfg
         parts = []
         if p.github_repo:
             parts.append(f"[dim]repo[/dim] [blue]{p.github_repo}[/blue]")
@@ -441,48 +385,28 @@ class TamaGitApp(App):
         p   = self._pet
         cnt = len(p.achievements)
         if cnt:
-            pct = cnt * 100 // TOTAL_ACHIEVEMENTS
+            from .models import TOTAL_ACHIEVEMENTS
             bar = "█" * (cnt * 13 // TOTAL_ACHIEVEMENTS) + "░" * (13 - cnt * 13 // TOTAL_ACHIEVEMENTS)
             self.query_one("#achievements", Static).update(
                 f"[yellow]🏆 {cnt}/{TOTAL_ACHIEVEMENTS}[/yellow]  "
-                f"[dim][{bar}] {pct}%  "
-                f"(tamagit achievements)[/dim]"
+                f"[dim][{bar}]  tamagit achievements[/dim]"
             )
         else:
-            self.query_one("#achievements", Static).update(
-                "[dim]No achievements yet.[/dim]"
-            )
+            self.query_one("#achievements", Static).update("[dim]No achievements yet.[/dim]")
 
     def _update_log(self) -> None:
+        """Always read from self._pet.events_log (updated every poll)."""
         p = self._pet
         if not p.events_log:
-            self.query_one("#log-panel", Static).update("[dim]No events yet.[/dim]")
-            return
+            self.query_one("#log-panel", Static).update("[dim]No events yet.[/dim]"); return
         lines = []
         for i, entry in enumerate(reversed(p.events_log[-7:])):
-            style = "bold bright_green" if i == 0 else "dim"
+            style = "bold bright_white" if i == 0 else "dim"
             lines.append(f"[{style}]{entry}[/{style}]")
         self.query_one("#log-panel", Static).update("\n".join(lines))
 
-    # ── Горячие клавиши ───────────────────────────────────────────────────────
-
     def action_refresh(self) -> None:
-        self._load()
-        self.notify("Refreshed!", timeout=2)
+        self._load(); self.notify("Refreshed!", timeout=2)
 
     def action_quit(self) -> None:
         self.exit()
-
-
-# ── Вспомогательные функции ───────────────────────────────────────────────────
-
-def _sbar(label: str, value: float, width: int = 18) -> str:
-    """Прогресс-бар с Rich-разметкой."""
-    v      = int(value)
-    filled = v * width // 100
-    bar    = "█" * filled + "░" * (width - filled)
-    if v >= 75:   color = "bright_green"
-    elif v >= 50: color = "yellow"
-    elif v >= 25: color = "dark_orange"
-    else:         color = "bright_red"
-    return f"[bold]{label:<8}[/bold] [{color}][{bar}] {v:3d}%[/{color}]"

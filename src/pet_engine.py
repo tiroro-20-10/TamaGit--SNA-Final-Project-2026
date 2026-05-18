@@ -54,17 +54,6 @@ def update_from_time(pet: PetState) -> None:
     pet.energy = _clamp(pet.energy - minutes * _ENERGY_DECAY)
     pet.mood   = _clamp(pet.mood   - minutes * _MOOD_DECAY)
 
-    # Continuous mood penalty while repos stay dirty (only local side feels this)
-    for info in pet.git_repos.values():
-        if info.get("is_dirty") and info.get("dirty_since"):
-            try:
-                dirty_hrs = (now - datetime.fromisoformat(info["dirty_since"])).total_seconds() / 3600
-                if dirty_hrs > 2:
-                    penalty = min(5.0, (dirty_hrs - 2) * 0.5)
-                    pet.mood = _clamp(pet.mood - penalty)
-            except (ValueError, TypeError):
-                pass
-
     avg = (pet.hunger + pet.energy + pet.mood) / 3
     if avg >= 60:
         pet.health = _clamp(pet.health + minutes * _HEALTH_RECOVER)
@@ -224,14 +213,11 @@ def apply_git_snapshot(pet: PetState, snapshot: GitSnapshot) -> list[str]:
     # Dirty tracking: store when the repo became dirty (for decay penalty)
     if snapshot.is_dirty:
         dirty_since = prev.get("dirty_since") or now_iso   # keep start time
-        messages.append(
-            "Uncommitted changes — mood penalty accumulates after 2h "
-            "(commit to clear penalty)"
-        )
+        messages.append("Uncommitted changes detected")
     else:
         dirty_since = ""   # repo clean, reset the timer
         if prev.get("is_dirty"):
-            messages.append("Repository cleaned — dirty penalty removed")
+            messages.append("Repository cleaned")
 
     if snapshot.unpushed_commits > 0:
         messages.append(f"{snapshot.unpushed_commits} commit(s) not pushed yet")
@@ -250,8 +236,8 @@ def apply_git_snapshot(pet: PetState, snapshot: GitSnapshot) -> list[str]:
         "last_scanned_at":  now_iso,
         "is_dirty":         snapshot.is_dirty,
         "dirty_since":      dirty_since,
-        "unpushed":         snapshot.unpushed_commits,
-        "unpulled":         snapshot.unpulled_commits,
+        "unpushed":         snapshot.unpushed_commits or 0,
+        "unpulled":         snapshot.unpulled_commits or 0,
     }
     return messages
 
