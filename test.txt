@@ -3,3 +3,4 @@ cooldown 2
 cooldown 3
 cooldown 1
 cooldown 2
+cooldown 3
