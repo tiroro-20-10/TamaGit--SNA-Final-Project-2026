@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="20" fill="url(#bg)"/>
+  <!-- Cat ears -->
+  <polygon points="55,70 70,45 85,70" fill="#7c3aed"/>
+  <polygon points="115,70 130,45 145,70" fill="#7c3aed"/>
+  <polygon points="60,70 70,52 80,70" fill="#f9a8d4"/>
+  <polygon points="120,70 130,52 140,70" fill="#f9a8d4"/>
+  <!-- Cat head -->
+  <ellipse cx="100" cy="100" rx="50" ry="45" fill="#4c1d95" opacity="0.9"/>
+  <!-- Eyes -->
+  <ellipse cx="83" cy="93" rx="8" ry="9" fill="#a78bfa"/>
+  <ellipse cx="117" cy="93" rx="8" ry="9" fill="#a78bfa"/>
+  <ellipse cx="83" cy="93" rx="4" ry="5" fill="#1a1a2e"/>
+  <ellipse cx="117" cy="93" rx="4" ry="5" fill="#1a1a2e"/>
+  <!-- Eye shine -->
+  <circle cx="86" cy="90" r="2" fill="white"/>
+  <circle cx="120" cy="90" r="2" fill="white"/>
+  <!-- Nose -->
+  <polygon points="100,107 96,103 104,103" fill="#f9a8d4"/>
+  <!-- Mouth -->
+  <path d="M96,108 Q100,114 104,108" stroke="#f9a8d4" stroke-width="1.5" fill="none"/>
+  <!-- Whiskers left -->
+  <line x1="75" y1="105" x2="52" y2="100" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+  <line x1="75" y1="108" x2="52" y2="108" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+  <line x1="75" y1="111" x2="52" y2="116" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+  <!-- Whiskers right -->
+  <line x1="125" y1="105" x2="148" y2="100" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+  <line x1="125" y1="108" x2="148" y2="108" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+  <line x1="125" y1="111" x2="148" y2="116" stroke="#7c3aed" stroke-width="1.5" opacity="0.7"/>
+  <!-- Git branch icon at bottom -->
+  <circle cx="82" cy="160" r="5" fill="#7c3aed"/>
+  <circle cx="100" cy="148" r="5" fill="#10b981"/>
+  <circle cx="118" cy="160" r="5" fill="#7c3aed"/>
+  <line x1="82" y1="155" x2="100" y2="153" stroke="#6d28d9" stroke-width="2"/>
+  <line x1="100" y1="153" x2="118" y2="155" stroke="#6d28d9" stroke-width="2"/>
+</svg>
