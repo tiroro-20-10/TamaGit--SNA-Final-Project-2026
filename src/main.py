@@ -29,6 +29,7 @@ from .ui import (
     BOLD, CYAN, DIM, GRAY, GREEN, MAGENTA, ORANGE, RED, RESET,
     WHITE, YELLOW,
     egg_hatch_frames, get_prompt_string,
+    egg_hatch_frames, get_pet_ascii, get_prompt_string,
     maybe_ghost_message, print_graveyard, print_status, stat_bar,
 )
 
@@ -66,6 +67,30 @@ def _require_pet_on_server() -> bool:
         return True   # other HTTP error — don't block
     except Exception:
         return True   # VPS unreachable — don't block local operation
+
+
+def _require_server_setup() -> bool:
+    """Enforce server-setup → init → setup order.
+    init must not run until server-setup has written .env and the webhook
+    server is running. Returns True if all preconditions are met.
+    """
+    env_file = Path("/opt/TamaGit/.env")
+    if not env_file.exists():
+        print(f"\n  {RED}Server not configured yet.{RESET}")
+        print(f"  Run first: {BOLD}tamagit server-setup{RESET}")
+        print(f"  {DIM}(server-setup creates .env, starts Docker, and sets up the GitHub webhook){RESET}\n")
+        return False
+
+    # Check if the webhook server is actually up
+    port = "8000"
+    try:
+        urllib.request.urlopen("http://localhost:8000/health", timeout=2)
+    except Exception:
+        print(f"\n  {YELLOW}Webhook server is not responding on port {port}.{RESET}")
+        print(f"  Start it with: {BOLD}docker compose up -d webhook{RESET}\n")
+        return False
+
+    return True
 
 
 def main() -> None:
@@ -283,9 +308,16 @@ def _cmd_react_visual(exit_code: int, full_cmd: str, storage: Storage) -> None:
 def _cmd_init(storage: Storage) -> None:
     """Hatch the team pet on the server.
 
-    Reads GITHUB_REPO and GITHUB_TOKEN from the .env file (set by server-setup).
-    Does not ask for them again — server-setup is the right place.
+    Enforces the correct setup order:
+      1. tamagit server-setup  (creates .env, starts Docker, creates GitHub webhook)
+      2. tamagit init           (this command)
+      3. tamagit setup          (run locally by each developer)
+
+    Reads GITHUB_REPO and GITHUB_TOKEN from the .env written by server-setup.
     """
+    if not _require_server_setup():
+        return
+
     if storage.is_initialized():
         pet = storage.load()
         if pet.alive:
@@ -762,12 +794,33 @@ sed -i '/# TAMAGIT-CLEANUP/,/# END-TAMAGIT-CLEANUP/d' ~/.bashrc 2>/dev/null
 # ── Help & docs ────────────────────────────────────────────────────────────────
 
 def _cmd_test() -> None:
-    """Run pytest on the TamaGit test suite."""
+    """Run pytest on the TamaGit test suite.
+
+    Works whether tamagit is installed via install.sh (editable venv),
+    pip install -e ., or run directly. Searches for the tests/ directory
+    relative to this source file and relative to cwd as fallback.
+    """
     import subprocess
-    project_dir = Path(__file__).parent.parent
+
+    # Try source-relative path first (works with editable installs)
+    project_dir = Path(__file__).resolve().parent.parent
+    tests_dir   = project_dir / "tests"
+
+    # Fallback: look for tests/ in current working directory
+    if not tests_dir.exists():
+        tests_dir = Path.cwd() / "tests"
+        project_dir = Path.cwd()
+
+    if not tests_dir.exists():
+        print(f"\n  {RED}Cannot find tests/ directory.{RESET}")
+        print(f"  Run from the TamaGit project root: {BOLD}cd /opt/TamaGit && tamagit test{RESET}\n")
+        sys.exit(1)
+
+    print(f"\n  {BOLD}Running TamaGit test suite...{RESET}")
+    print(f"  {DIM}Project: {project_dir}{RESET}\n")
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "-v"],
-        cwd=project_dir,
+        [sys.executable, "-m", "pytest", str(tests_dir), "-v"],
+        cwd=str(project_dir),
     )
     sys.exit(result.returncode)
 
@@ -1171,67 +1224,6 @@ def _build_parser() -> ArgumentParser:
     react_p.add_argument("full_cmd",  nargs="?", default="")
 
     return parser
-
-
-def build_parser() -> ArgumentParser:
-    parser = ArgumentParser(prog="gittama", description="GitTama terminal tamagotchi")
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-
-    subparsers.add_parser("status", help="Show the pet status")
-    subparsers.add_parser("log", help="Show event history")
-
-    feed_parser = subparsers.add_parser("feed", help="Feed the pet")
-    feed_parser.add_argument("-a", "--amount", type=int, default=15)
-
-    play_parser = subparsers.add_parser("play", help="Play with the pet")
-    play_parser.add_argument("-a", "--amount", type=int, default=15)
-
-    subparsers.add_parser("sleep", help="Let the pet sleep")
-    subparsers.add_parser("clean", help="Reward repository cleanup")
-
-    scan_parser = subparsers.add_parser("scan", help="Scan a local git repository")
-    scan_parser.add_argument("path", nargs="?", default=".", help="Repository path, defaults to current directory")
-
-    return parser
-
-
-def print_status(pet) -> None:
-    print(get_pet_ascii(pet))
-    print(f"{BOLD}GitTama{RESET}")
-    print(f"Name: {pet.name}")
-    print(f"Hunger: {RED}{pet.hunger:3}{RESET} (0 = full, 100 = hungry)")
-    print(f"Energy: {YELLOW}{pet.energy:3}{RESET} (0 = cheerful, 100 = tired)")
-    print(f"Mood:   {MAGENTA}{pet.mood:3}{RESET} (0 = happy, 100 = sad)")
-    print(f"Health: {GREEN}{pet.health:3}{RESET} (0 = bad, 100 = excellent)")
-
-    if pet.achievements:
-        print(f"\n{YELLOW}Achievements:{RESET}")
-        for achievement in pet.achievements:
-            print(f"   - {achievement}")
-
-    if pet.events_log:
-        print(f"\n{BOLD}Recent events:{RESET}")
-        for entry in pet.events_log[-5:]:
-            print(f"   {entry}")
-
-
-def print_scan_result(snapshot: GitSnapshot, messages: list[str]) -> None:
-    if snapshot.is_repo:
-        print(f"{BOLD}Git scan:{RESET} {snapshot.repo_root}")
-        print(f"Branch: {snapshot.branch}")
-        print(f"Dirty: {'yes' if snapshot.is_dirty else 'no'}")
-        if snapshot.last_commit_hash:
-            print(f"Last commit: {snapshot.last_commit_hash[:8]} {snapshot.last_commit_subject or ''}")
-        if snapshot.upstream_available:
-            print(f"Unpushed: {snapshot.unpushed_commits}")
-            print(f"Unpulled: {snapshot.unpulled_commits}")
-        else:
-            print("Upstream: not configured")
-    else:
-        print(f"{YELLOW}Git scan skipped:{RESET} {snapshot.error}")
-
-    print("\nPet reactions:")
-    print(summarize_messages(messages))
 
 
 if __name__ == "__main__":
