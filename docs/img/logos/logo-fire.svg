@@ -1,0 +1,24 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="clip2">
+      <rect width="200" height="200" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <rect width="200" height="200" rx="14" fill="#130600"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#ff7c00" stroke-width="1" opacity="0.4"/>
+
+  <text x="32"  y="40" font-family="'Courier New', Courier, monospace" font-size="18" fill="#cc4400" opacity="0.55">^</text>
+  <text x="55"  y="30" font-family="'Courier New', Courier, monospace" font-size="22" fill="#ff7c00" opacity="0.65">^</text>
+  <text x="82"  y="35" font-family="'Courier New', Courier, monospace" font-size="16" fill="#ffaa00" opacity="0.5">^</text>
+  <text x="107" y="27" font-family="'Courier New', Courier, monospace" font-size="24" fill="#ff7c00" opacity="0.65">^</text>
+  <text x="138" y="34" font-family="'Courier New', Courier, monospace" font-size="18" fill="#cc4400" opacity="0.55">^</text>
+  <text x="158" y="42" font-family="'Courier New', Courier, monospace" font-size="14" fill="#ff7c00" opacity="0.45">^</text>
+
+  <text x="100" y="90"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#ff9500"> /\_/\ </text>
+  <text x="100" y="124" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#ff7c00" font-weight="bold">(&gt;^.^&lt;)</text>
+  <text x="100" y="158" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#ffb300"> &gt; ~ &lt; </text>
+
+  <line x1="30" y1="172" x2="170" y2="172" stroke="#ff7c00" stroke-width="0.5" opacity="0.25"/>
+  <text x="100" y="187" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#ff7c00" opacity="0.5" letter-spacing="2">on_fire</text>
+</svg>

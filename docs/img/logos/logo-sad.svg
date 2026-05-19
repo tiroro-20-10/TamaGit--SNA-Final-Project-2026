@@ -1,0 +1,28 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="clip">
+      <rect width="200" height="200" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <rect width="200" height="200" rx="14" fill="#03050d"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#6895d2" stroke-width="1" opacity="0.3"/>
+
+  <text x="22"  y="48"  font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.28">|</text>
+  <text x="46"  y="36"  font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.22">|</text>
+  <text x="70"  y="54"  font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.3" >|</text>
+  <text x="128" y="40"  font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.24">|</text>
+  <text x="154" y="52"  font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.3" >|</text>
+  <text x="177" y="38"  font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.2" >|</text>
+  <text x="30"  y="168" font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.2" >|</text>
+  <text x="58"  y="177" font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.25">|</text>
+  <text x="144" y="170" font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.2" >|</text>
+  <text x="170" y="175" font-family="'Courier New', monospace" font-size="9"  fill="#4a6fa5" opacity="0.24">|</text>
+
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#6895d2"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#7bafd4">( T.T )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#6895d2"> &gt; ~ &lt; </text>
+
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#6895d2" stroke-width="0.5" opacity="0.2"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#6895d2" opacity="0.4" letter-spacing="1.5">disconnected...</text>
+</svg>

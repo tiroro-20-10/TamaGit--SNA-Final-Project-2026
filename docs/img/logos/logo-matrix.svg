@@ -1,0 +1,25 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+
+  <rect width="200" height="200" rx="14" fill="#000500"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#00ff41" stroke-width="1" opacity="0.28"/>
+
+  <text x="14"  y="44"  font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.16">01</text>
+  <text x="14"  y="76"  font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.13">10</text>
+  <text x="15"  y="120" font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.15">01</text>
+  <text x="14"  y="160" font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.14">11</text>
+  <text x="170" y="50"  font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.15">10</text>
+  <text x="170" y="88"  font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.13">01</text>
+  <text x="170" y="132" font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.16">11</text>
+  <text x="170" y="164" font-family="'Courier New', monospace" font-size="8" fill="#00ff41" opacity="0.14">00</text>
+  <text x="14"  y="175" font-family="'Courier New', monospace" font-size="7" fill="#00ff41" opacity="0.1">0</text>
+  <text x="176" y="175" font-family="'Courier New', monospace" font-size="7" fill="#00ff41" opacity="0.1">1</text>
+
+  <text x="100" y="27" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#00ff41" opacity="0.38" letter-spacing="1">wake up, neo...</text>
+
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#009922"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#00ff41" font-weight="bold">( ^.^ )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#009922"> &gt; ~ &lt; </text>
+
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#00ff41" stroke-width="0.5" opacity="0.2"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#00ff41" opacity="0.38" letter-spacing="1">follow the rabbit</text>
+</svg>

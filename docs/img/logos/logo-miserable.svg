@@ -1,0 +1,24 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="xhatch" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 12L12 0" fill="none" stroke="#cc2222" stroke-width="0.5" opacity="0.14"/>
+      <path d="M0 0L12 12" fill="none" stroke="#cc2222" stroke-width="0.5" opacity="0.1"/>
+    </pattern>
+    <clipPath id="clip">
+      <rect width="200" height="200" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <rect width="200" height="200" rx="14" fill="#0e0000"/>
+  <rect width="200" height="200" fill="url(#xhatch)" clip-path="url(#clip)"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#e05252" stroke-width="1" opacity="0.35"/>
+
+  <text x="100" y="26" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="10" fill="#e05252" opacity="0.45" letter-spacing="2">!! WARNING !!</text>
+
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#aa2222"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#e05252">( ;_; )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#aa2222"> &gt; ~ &lt; </text>
+
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#e05252" stroke-width="0.5" opacity="0.22"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#e05252" opacity="0.5" letter-spacing="3">CRITICAL</text>
+</svg>

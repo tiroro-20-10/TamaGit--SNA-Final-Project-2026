@@ -1,0 +1,23 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+
+  <rect width="200" height="200" rx="14" fill="#f2f1ec"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#888" stroke-width="0.8" opacity="0.35"/>
+
+  <line x1="16" y1="16" x2="26" y2="16" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="16" y1="16" x2="16" y2="26" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="184" y1="16" x2="174" y2="16" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="184" y1="16" x2="184" y2="26" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="16" y1="184" x2="26" y2="184" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="16" y1="184" x2="16" y2="174" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="184" y1="184" x2="174" y2="184" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+  <line x1="184" y1="184" x2="184" y2="174" stroke="#aaa" stroke-width="1" opacity="0.5"/>
+
+  <text x="100" y="26" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="10" fill="#999" letter-spacing="2.5">TamaGit</text>
+
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#555"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#222">( x.x )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#777"> &gt; ~ &lt; </text>
+
+  <line x1="50" y1="164" x2="150" y2="164" stroke="#bbb" stroke-width="0.8"/>
+  <text x="100" y="179" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#aaa" letter-spacing="2">[ GHOST MODE ]</text>
+</svg>

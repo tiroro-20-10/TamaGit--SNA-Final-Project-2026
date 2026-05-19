@@ -1,0 +1,25 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="dots5" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="0.8" fill="#7c3aed" opacity="0.25"/>
+    </pattern>
+    <clipPath id="clip5">
+      <rect width="200" height="200" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <rect width="200" height="200" rx="14" fill="#0c0820"/>
+  <rect width="200" height="200" fill="url(#dots5)" clip-path="url(#clip5)"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#9d6fff" stroke-width="1" opacity="0.3"/>
+
+  <text x="148" y="62" font-family="'Courier New', Courier, monospace" font-size="22" fill="#9d6fff" opacity="0.55">z</text>
+  <text x="163" y="46" font-family="'Courier New', Courier, monospace" font-size="16" fill="#9d6fff" opacity="0.38">z</text>
+  <text x="174" y="34" font-family="'Courier New', Courier, monospace" font-size="11" fill="#9d6fff" opacity="0.22">z</text>
+
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#c4a8ff"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#9d6fff">( z.z )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#c4a8ff"> &gt; ~ &lt; </text>
+
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#9d6fff" stroke-width="0.5" opacity="0.2"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#9d6fff" opacity="0.45" letter-spacing="2">sleeping</text>
+</svg>
