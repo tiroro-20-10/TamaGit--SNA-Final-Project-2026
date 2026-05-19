@@ -157,8 +157,8 @@ GitHub repository
  │  │     • bury pet on death          │
  │  │     • auto-resurrect on cooldown │
  │  │                                  │
- │  ├── GET  /state      ← sync/live  │
- │  └── GET  /graveyard  ← sync       │
+ │  ├── GET  /state      ← sync/live   │
+ │  └── GET  /graveyard  ← sync        │
  │                                     │
  │  ~/.tamagit/state.json  (source of truth)
  └─────────────────────────────────────┘
@@ -166,7 +166,7 @@ GitHub repository
           │  (daemon every 10 min, or live directly)
           ▼
  ┌─────────────────────────────────────┐
- │  Developer machine (each teammate) │
+ │  Developer machine (each teammate)  │
  │                                     │
  │  ~/.tamagit/state.json  (local copy)│
  │  ~/.tamagit/config.json (personal)  │
@@ -549,16 +549,14 @@ python -m pytest tests/test_tamagit.py -v
 ---
 
 ## 👨‍💻 Team
-
-**Karim Khabibrakhmanov** — Product Owner + Development  
-**Roman Titov** — Scrum Master + Development  
+ 
+**Roman Titov** — Idea + Development  
 email → r.titov@innopolis.university · telegram → [@romyst](https://t.me/romyst)  
-**Alina Khisamutdinova** — Development  
-**Elizaveta Krasova** — Development  
-**Dmitrii Vasiliev** — Development  
 **Amir Valeev** — Development  
+**Ravil Khusnutdinov** — Development  
+**Arifzhan Narimov** — Development  
 
-**Course:** Social Network Analysis · Innopolis University · Spring 2026
+**Course:** System and Network Administration · Innopolis University · Spring 2026
 
 [---{ back to top }---](#tamagit-)
 
