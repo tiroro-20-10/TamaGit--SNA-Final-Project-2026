@@ -1,7 +1,9 @@
+<a id="top"></a>
+
 <div align="center">
   <img src="docs/img/logo.svg" alt="TamaGit Logo" width="180" />
 
-  # TamaGit 🐱
+  # TamaGit :cat:
 
   **A terminal Tamagotchi for your development team.**  
   Your shared pet lives and dies by the team's GitHub activity.
@@ -12,44 +14,47 @@
   [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://docker.com)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+  [:link: Link to the Demo Video](https://disk.yandex.ru/d/vHdMYdTkHk3ppA)
+  
   *SNA Course Project · Innopolis University · Spring 2026*
 </div>
 
 ---
 
 <details>
-  <summary>📋 Table of Contents</summary>
+  <summary>:clipboard: Table of Contents</summary>
   <ol>
-    <li><a href="#-what-is-tamagit">What is TamaGit?</a></li>
-    <li><a href="#-how-it-works">How it works</a></li>
-    <li><a href="#-features">Features</a></li>
-    <li><a href="#-architecture">Architecture</a></li>
-    <li><a href="#-tech-stack">Tech Stack</a></li>
-    <li><a href="#-project-structure">Project Structure</a></li>
-    <li><a href="#-installation">Installation</a>
+    <li><a href="#what-is-tamagit">What is TamaGit?</a></li>
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#tech-stack">Tech Stack</a></li>
+    <li><a href="#project-structure">Project Structure</a></li>
+    <li><a href="#installation">Installation</a>
       <ul>
-        <li><a href="#server-setup-one-time-admin-only">Server Setup</a></li>
-        <li><a href="#local-developer-setup">Local Developer Setup</a></li>
+        <li><a href="#server-setup">Server Setup</a></li>
+        <li><a href="#local-setup">Local Developer Setup</a></li>
       </ul>
     </li>
-    <li><a href="#-commands-reference">Commands Reference</a></li>
-    <li><a href="#-configuration">Configuration</a></li>
-    <li><a href="#-pet-mechanics">Pet Mechanics</a></li>
-    <li><a href="#-team-workflow">Team Workflow</a></li>
-    <li><a href="#-uninstall--cleanup">Uninstall & Cleanup</a></li>
-    <li><a href="#-running-tests">Running Tests</a></li>
-    <li><a href="#-team">Team</a></li>
+    <li><a href="#commands-reference">Commands Reference</a></li>
+    <li><a href="#configuration">Configuration</a></li>
+    <li><a href="#pet-mechanics">Pet Mechanics</a></li>
+    <li><a href="#team-workflow">Team Workflow</a></li>
+    <li><a href="#uninstall">Uninstall & Cleanup</a></li>
+    <li><a href="#running-tests">Running Tests</a></li>
+    <li><a href="#team">Team</a></li>
   </ol>
 </details>
 
 ---
 
-## 🌟 What is TamaGit?
+<a id="what-is-tamagit"></a>
+## :star2: What is TamaGit?
 
 TamaGit is a **shared team Tamagotchi** that lives inside your terminal and reacts to your team's GitHub activity in real time. One pet per project repository. The whole team watches it together.
 
-Push code regularly → the pet is happy and healthy.  
-Break CI, ignore issues, stop committing → the pet gets sick and eventually dies.
+Push code regularly -> the pet is happy and healthy.  
+Break CI, ignore issues, stop committing -> the pet gets sick and eventually dies.
 
 It is a **social coding experiment**: a tiny game layered on top of your normal git workflow that makes team health visible and gives everyone a reason to care about CI pipelines, open issues, and commit streaks.
 
@@ -65,40 +70,42 @@ It is a **social coding experiment**: a tiny game layered on top of your normal 
   Mood       [████████████████░░░░░░]  74%
   Health     [████████████████████░░]  91%
 
-  🎯 Team Quest:  Make 5 commits as a team today  [3/5]
+  :dart: Team Quest:  Make 5 commits as a team today  [3/5]
 ```
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## ⚙️ How it works
+<a id="how-it-works"></a>
+## :gear: How it works
 
 GitHub sends webhook events to a FastAPI server running on your VPS. The server updates the pet's stats and saves them to a state file. Every developer on the team can see the same pet by syncing from the VPS.
 
 | GitHub Event | Pet Effect |
 |---|---|
-| `git push` / commit | Hunger ↑ · Mood ↑ · Streak +1 |
+| `git push` / commit | Hunger up · Mood up · Streak +1 |
 | PR merged | Health +15 · Energy +10 · Mood +10 |
 | Issue closed | Mood +15 · Hunger +5 |
 | CI pipeline passes | Health +10 · Energy +5 |
-| CI pipeline fails | Health −20 · Energy −10 |
-| No activity (days) | All stats decay → Health drops → **death** |
+| CI pipeline fails | Health -20 · Energy -10 |
+| No activity (days) | All stats decay -> Health drops -> **death** |
 
 Stats run from **0** (critical) to **100** (excellent). Health is derived from the average of the other three. When Health reaches zero the pet dies and the team enters **cooldown mode**.
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## ✨ Features
+<a id="features"></a>
+## :sparkles: Features
 
-### 🐱 Shared Team Pet
+### :cat: Shared Team Pet
 - One pet per repository, one state file on the VPS — every teammate sees the same pet
 - Pet name chosen randomly from a custom pool on every resurrection
 - 8 mood states with matching ASCII art, emoji, and terminal colors
 
-### 📊 Live Animated TUI
+### :bar_chart: Live Animated TUI
 ```
 tamagit live
 ```
@@ -107,17 +114,17 @@ tamagit live
 - Reads VPS state directly every 5 s — no daemon needed
 - Press `T` to toggle dark / monochrome theme
 
-### 🎯 Team Daily Quests
+### :dart: Team Daily Quests
 Generated on the VPS every morning based on actual repo state:
 - "Make 5 commits as a team today"
 - "Close 3 open issues" *(only if 3+ issues exist)*
 - "Fix the broken CI pipeline" *(only if CI is currently failing)*
 - "Merge 2 pull requests" *(only if 2+ PRs are open)*
 
-### 🏆 Team Achievements
+### :trophy: Team Achievements
 13 achievements unlocked server-side: First Push, PR Factory, Daily Team (7-day streak), Weekly Warriors (30-day streak), Quest Champion, and more.
 
-### 💀 Death & Auto-Resurrection
+### :skull: Death & Auto-Resurrection
 When the pet dies it is immediately laid to rest in the **graveyard**. The team must then complete a cooldown:
 - Make 3 commits
 - Close 1 issue
@@ -125,20 +132,21 @@ When the pet dies it is immediately laid to rest in the **graveyard**. The team 
 
 After all three, the **next GitHub event automatically hatches a new pet** and creates a GitHub issue to notify the team.
 
-### 🔧 Full Local Customisation
+### :wrench: Full Local Customisation
 Each developer can set a personal display name, ASCII style, prompt format, color theme, and sync intervals — all stored locally, never overwritten by server syncs.
 
-### 🖥️ Bash Prompt Integration
+### :desktop_computer: Bash Prompt Integration
 ```
 [Committy(^.^) H:79 E:88 M:74 ❤:91] user@host:~$
 ```
 The face icon uses the **mood state color** (cyan for happy, blue for sleeping, orange when on fire). Stats use a performance color. Name and brackets are neutral.
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 🏗️ Architecture
+<a id="architecture"></a>
+## :building_construction: Architecture
 
 ```
 GitHub repository
@@ -184,11 +192,12 @@ GitHub repository
 - `tamagit react` — visual feedback **only**, never writes state
 - `tamagit scan` — updates **only** git metadata (dirty/unpushed), never game stats
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 🛠️ Tech Stack
+<a id="tech-stack"></a>
+## :hammer_and_wrench: Tech Stack
 
 | Component | Technology |
 |---|---|
@@ -202,11 +211,12 @@ GitHub repository
 
 Zero heavy dependencies on the client side — plain Python + one ANSI library.
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 📁 Project Structure
+<a id="project-structure"></a>
+## :file_folder: Project Structure
 
 ```
 TamaGit/
@@ -241,12 +251,14 @@ TamaGit/
         └── logo.svg
 ```
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 🚀 Installation
+<a id="installation"></a>
+## :rocket: Installation
 
+<a id="server-setup"></a>
 ### Server Setup *(one-time, admin only)*
 
 > **Prerequisites:** VPS with a public IP, Docker + Docker Compose installed, a GitHub repository for your project.
@@ -267,12 +279,12 @@ tamagit help     # verify installation
 
 #### Step 2 — Create a GitHub token
 
-1. **github.com → your avatar → Settings**
-2. **Developer settings → Personal access tokens → Tokens (classic)**
+1. **github.com -> your avatar -> Settings**
+2. **Developer settings -> Personal access tokens -> Tokens (classic)**
 3. **Generate new token (classic)**
    - Note: `TamaGit`
    - Expiration: 90 days
-   - Scopes: **☑ repo** + **☑ admin:repo_hook**
+   - Scopes: **:ballot_box_with_check: repo** + **:ballot_box_with_check: admin:repo_hook**
 4. Copy the token immediately — it is shown only once.
 
 #### Step 3 — Run the server wizard
@@ -299,7 +311,7 @@ Verify:
 ```bash
 curl http://<vps-ip>:8000/health   # → {"status":"ok"}
 docker compose ps                   # webhook should be Up
-# GitHub → repo → Settings → Webhooks → webhook with ✓
+# GitHub → repo → Settings → Webhooks → webhook with checkmark
 ```
 
 #### Step 4 — Hatch the team pet
@@ -310,7 +322,7 @@ tamagit init
 
 The wizard:
 - Reads repo + token from `.env` automatically
-- Calls GitHub API to compute **realistic initial stats** (hunger ← days since last push, mood ← open issues count, energy ← CI status)
+- Calls GitHub API to compute **realistic initial stats** (hunger <- days since last push, mood <- open issues count, energy <- CI status)
 - Plays an egg-hatching animation
 - Creates the pet with a random name from the custom pool
 
@@ -319,10 +331,11 @@ tamagit status   # welcome, new pet!
 ```
 
 > **Setup order is enforced:**
-> `server-setup` → `init` → *(share VPS URL with team)* → each developer runs `setup`
+> `server-setup` -> `init` -> *(share VPS URL with team)* -> each developer runs `setup`
 
 ---
 
+<a id="local-setup"></a>
 ### Local Developer Setup
 
 ```bash
@@ -341,11 +354,12 @@ tamagit install-prompt && source ~/.bashrc
 tamagit daemon start
 ```
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 📖 Commands Reference
+<a id="commands-reference"></a>
+## :open_book: Commands Reference
 
 | Command | Description |
 |---|---|
@@ -374,11 +388,12 @@ tamagit daemon start
 | `tamagit uninstall` | Remove all TamaGit data |
 | `tamagit help` | Command overview |
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## ⚙️ Configuration
+<a id="configuration"></a>
+## :gear: Configuration
 
 All personal settings are stored in `~/.tamagit/config.json` and are **never overwritten** by server syncs.
 
@@ -409,11 +424,12 @@ tamagit config reset                   # restore all defaults
 | `sync_interval` | minutes | `10` |
 | `scan_interval` | minutes | `30` |
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 🎮 Pet Mechanics
+<a id="pet-mechanics"></a>
+## :video_game: Pet Mechanics
 
 ### Stats
 
@@ -428,32 +444,33 @@ Health  — derived from average; CI failures damage it directly
 
 | State | Trigger | Color |
 |---|---|---|
-| 😸 ecstatic | avg ≥ 80 | 🟢 green |
-| 😺 happy | avg ≥ 60 | 🔵 cyan |
-| 😼 okay | avg ≥ 40 | 🟡 yellow |
-| 😿 sad | avg ≥ 20 | 🟣 magenta |
-| 🙀 miserable | avg < 20 | 🔴 red |
-| 😴 sleeping | no activity for 12 h | 🔵 blue |
-| 🔥 on fire | streak ≥ 7 days + avg ≥ 70 | 🟠 orange |
-| 👻 ghost | pet has died | ⬜ grey |
+| :smiley_cat: ecstatic | avg >= 80 | :green_circle: green |
+| :smile_cat: happy | avg >= 60 | :blue_circle: cyan |
+| :smirk_cat: okay | avg >= 40 | :yellow_circle: yellow |
+| :crying_cat_face: sad | avg >= 20 | :purple_circle: magenta |
+| :scream_cat: miserable | avg < 20 | :red_circle: red |
+| :sleeping: sleeping | no activity for 12 h | :blue_circle: blue |
+| :fire: on fire | streak >= 7 days + avg >= 70 | :orange_circle: orange |
+| :ghost: ghost | pet has died | :white_large_square: grey |
 
 ### Death & Cooldown
 
 When Health reaches 0 the pet dies and is **immediately added to the graveyard**. The team must then complete three cooldown tasks via GitHub:
 
 ```
-☐  Make 3 commits
-☐  Close 1 issue
-☐  Get CI green once
+[ ]  Make 3 commits
+[ ]  Close 1 issue
+[ ]  Get CI green once
 ```
 
 After all three, the **next GitHub event automatically hatches a new pet**. Starting stats reflect the quality of the cooldown work. The server creates a GitHub issue to announce the new pet.
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 👥 Team Workflow
+<a id="team-workflow"></a>
+## :busts_in_silhouette: Team Workflow
 
 ```
 Server admin (once):          Every developer (once):
@@ -469,11 +486,12 @@ Daily workflow (everyone):
 
 **The pet updates automatically** — no extra commands needed during normal development. Just push code, close issues, and keep CI green.
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 🗑️ Uninstall & Cleanup
+<a id="uninstall"></a>
+## :wastebasket: Uninstall & Cleanup
 
 ### Remove from a local machine
 
@@ -518,11 +536,12 @@ docker compose restart webhook   # picks up fresh state
 tamagit init                     # hatch a new pet
 ```
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 🧪 Running Tests
+<a id="running-tests"></a>
+## :test_tube: Running Tests
 
 ```bash
 # From any machine with TamaGit installed
@@ -544,25 +563,26 @@ python -m pytest tests/test_tamagit.py -v
 - Config manager (set / get / reset / type coercion)
 - All mood labels (parametrized for every state)
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 👨‍💻 Team
- 
+<a id="team"></a>
+## :technologist: Team
+
 **Roman Titov** — Idea + Development  
-email → r.titov@innopolis.university · telegram → [@romyst](https://t.me/romyst)  
+email -> r.titov@innopolis.university · telegram -> [@romyst](https://t.me/romyst)  
 **Amir Valeev** — Development  
 **Ravil Khusnutdinov** — Development  
 **Arifzhan Narimov** — Development  
 
 **Course:** System and Network Administration · Innopolis University · Spring 2026
 
-[---{ back to top }---](#tamagit-)
+[Back to top](#top)
 
 ---
 
-## 📄 License
+## :page_facing_up: License
 
 Open Source — distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
