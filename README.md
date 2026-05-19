@@ -1,7 +1,7 @@
 <a id="top"></a>
 
 <div align="center">
-  <img src="docs/img/logo.svg" alt="TamaGit Logo" width="180" />
+  <img src="docs/img/logos/logo-happy.svg" alt="TamaGit Logo" width="180" />
 
   # TamaGit :cat:
 
