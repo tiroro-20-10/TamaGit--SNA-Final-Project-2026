@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="cp" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="#cc0000" opacity="0.08"/>
+    </pattern>
+    <clipPath id="cc"><rect width="200" height="200" rx="14"/></clipPath>
+  </defs>
+  <rect width="200" height="200" rx="14" fill="#0d0000"/>
+  <rect width="200" height="200" fill="url(#cp)" clip-path="url(#cc)"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#cc0000" stroke-width="1" opacity="0.4"/>
+  <text x="100" y="24" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#cc0000" opacity="0.55" letter-spacing="1">BUILD FAILED</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#880000"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#cc0000">( ;_; )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#880000"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#cc0000" stroke-width="0.5" opacity="0.22"/>
+  <text x="100" y="178" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="8" fill="#cc0000" opacity="0.5" letter-spacing="1">tests failing: 42/42</text>
+</svg>

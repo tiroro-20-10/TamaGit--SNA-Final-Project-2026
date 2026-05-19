@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="14" fill="#0f0000"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#ff4444" stroke-width="1.5" opacity="0.4"/>
+  <text x="14"  y="30"  font-family="'Courier New', monospace" font-size="14" fill="#ff4444" opacity="0.45">!</text>
+  <text x="180" y="30"  font-family="'Courier New', monospace" font-size="14" fill="#ff4444" opacity="0.45">!</text>
+  <text x="14"  y="185" font-family="'Courier New', monospace" font-size="14" fill="#ff4444" opacity="0.45">!</text>
+  <text x="180" y="185" font-family="'Courier New', monospace" font-size="14" fill="#ff4444" opacity="0.45">!</text>
+  <text x="100" y="26" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#ff4444" opacity="0.5" letter-spacing="2">SEGMENTATION</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#cc2222"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#ff4444">( &gt;_&lt; )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#cc2222"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#ff4444" stroke-width="0.5" opacity="0.22"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#ff4444" opacity="0.5" letter-spacing="1">fault (core dumped)</text>
+</svg>

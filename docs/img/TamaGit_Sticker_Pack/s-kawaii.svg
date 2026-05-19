@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="14" fill="#fff0f5"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#ff8ab4" stroke-width="1" opacity="0.4"/>
+  <text x="16"  y="32"  font-family="monospace" font-size="9"  fill="#ff8ab4" opacity="0.45">&#9829;</text>
+  <text x="170" y="28"  font-family="monospace" font-size="9"  fill="#ff8ab4" opacity="0.4">&#9829;</text>
+  <text x="22"  y="174" font-family="monospace" font-size="9"  fill="#ff8ab4" opacity="0.4">&#9829;</text>
+  <text x="168" y="174" font-family="monospace" font-size="9"  fill="#ff8ab4" opacity="0.45">&#9829;</text>
+  <text x="12"  y="110" font-family="monospace" font-size="7"  fill="#ff8ab4" opacity="0.3">&#9829;</text>
+  <text x="178" y="108" font-family="monospace" font-size="7"  fill="#ff8ab4" opacity="0.3">&#9829;</text>
+  <text x="62"  y="22"  font-family="monospace" font-size="6"  fill="#ff8ab4" opacity="0.2">&#9829;</text>
+  <text x="134" y="182" font-family="monospace" font-size="6"  fill="#ff8ab4" opacity="0.2">&#9829;</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#cc6699"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#ff8ab4">( u.u )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#cc6699"> &gt; ~ &lt; </text>
+  <line x1="50" y1="164" x2="150" y2="164" stroke="#ff8ab4" stroke-width="0.8" opacity="0.35"/>
+  <text x="100" y="179" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="10" fill="#ff8ab4" opacity="0.6" letter-spacing="3">uwu</text>
+</svg>

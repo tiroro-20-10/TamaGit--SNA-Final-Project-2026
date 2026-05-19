@@ -1,0 +1,16 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="wp" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path d="M0 8 Q4 4 8 8 Q12 12 16 8" fill="none" stroke="#e87060" stroke-width="0.4" opacity="0.12"/>
+    </pattern>
+    <clipPath id="wc"><rect width="200" height="200" rx="14"/></clipPath>
+  </defs>
+  <rect width="200" height="200" rx="14" fill="#180600"/>
+  <rect width="200" height="200" fill="url(#wp)" clip-path="url(#wc)"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#e87060" stroke-width="1" opacity="0.32"/>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#aa4030"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#e87060">( -.- )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#aa4030"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#e87060" stroke-width="0.5" opacity="0.2"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#e87060" opacity="0.45" letter-spacing="2">just okay</text>
+</svg>

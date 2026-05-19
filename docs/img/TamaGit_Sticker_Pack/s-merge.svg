@@ -1,0 +1,20 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="14" fill="#0d0020"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.35"/>
+  <line x1="14" y1="14"  x2="14"  y2="42"  stroke="#8b5cf6" stroke-width="1.5" opacity="0.38"/>
+  <line x1="14" y1="28"  x2="30"  y2="40"  stroke="#8b5cf6" stroke-width="1"   opacity="0.3"/>
+  <circle cx="14" cy="14" r="3" fill="#8b5cf6" opacity="0.5"/>
+  <circle cx="14" cy="42" r="2" fill="#8b5cf6" opacity="0.4"/>
+  <circle cx="30" cy="40" r="2" fill="#8b5cf6" opacity="0.35"/>
+  <line x1="186" y1="158" x2="186" y2="186" stroke="#8b5cf6" stroke-width="1.5" opacity="0.38"/>
+  <line x1="170" y1="162" x2="186" y2="174" stroke="#8b5cf6" stroke-width="1"   opacity="0.3"/>
+  <circle cx="186" cy="186" r="3" fill="#8b5cf6" opacity="0.5"/>
+  <circle cx="186" cy="158" r="2" fill="#8b5cf6" opacity="0.4"/>
+  <circle cx="170" cy="162" r="2" fill="#8b5cf6" opacity="0.35"/>
+  <text x="100" y="26" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#8b5cf6" opacity="0.5" letter-spacing="1.5">git merge</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#6d28d9"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#8b5cf6">( ^.^ )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#6d28d9"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#8b5cf6" stroke-width="0.5" opacity="0.2"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#8b5cf6" opacity="0.45" letter-spacing="1">--no-ff main</text>
+</svg>

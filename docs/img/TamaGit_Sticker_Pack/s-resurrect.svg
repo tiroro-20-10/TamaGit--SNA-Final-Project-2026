@@ -1,0 +1,16 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="14" fill="#0a0a00"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#e8e0a0" stroke-width="1" opacity="0.35"/>
+  <circle cx="100" cy="100" r="72" fill="none" stroke="#e8e0a0" stroke-width="0.5" opacity="0.1"/>
+  <circle cx="100" cy="100" r="50" fill="none" stroke="#e8e0a0" stroke-width="0.4" opacity="0.07"/>
+  <circle cx="22"  cy="30"  r="1"   fill="#e8e0a0" opacity="0.3"/>
+  <circle cx="178" cy="28"  r="1.2" fill="#e8e0a0" opacity="0.35"/>
+  <circle cx="18"  cy="170" r="0.8" fill="#e8e0a0" opacity="0.28"/>
+  <circle cx="182" cy="172" r="1"   fill="#e8e0a0" opacity="0.3"/>
+  <text x="100" y="26" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#e8e0a0" opacity="0.45" letter-spacing="2">resurrected</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#b0a860"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#e8e0a0">( ^.^ )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#b0a860"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#e8e0a0" stroke-width="0.5" opacity="0.18"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#e8e0a0" opacity="0.4" letter-spacing="1.5">new pet hatched</text>
+</svg>

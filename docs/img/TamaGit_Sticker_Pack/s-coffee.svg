@@ -1,0 +1,12 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="14" fill="#0d0600"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#c47a1e" stroke-width="1" opacity="0.35"/>
+  <text x="82"  y="64" font-family="'Courier New', monospace" font-size="13" fill="#c47a1e" opacity="0.32">~</text>
+  <text x="97"  y="57" font-family="'Courier New', monospace" font-size="13" fill="#996614" opacity="0.25">~</text>
+  <text x="114" y="64" font-family="'Courier New', monospace" font-size="13" fill="#c47a1e" opacity="0.32">~</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#996614"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#c47a1e">( @.@ )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#996614"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#c47a1e" stroke-width="0.5" opacity="0.22"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#c47a1e" opacity="0.5" letter-spacing="2">need caffeine</text>
+</svg>

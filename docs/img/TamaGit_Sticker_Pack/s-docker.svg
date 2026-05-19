@@ -1,0 +1,19 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="dg" width="18" height="18" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="none" stroke="#0db7ed" stroke-width="0.4" opacity="0.1"/>
+    </pattern>
+    <clipPath id="dc">
+      <rect width="200" height="200" rx="14"/>
+    </clipPath>
+  </defs>
+  <rect width="200" height="200" rx="14" fill="#00131f"/>
+  <rect width="200" height="200" fill="url(#dg)" clip-path="url(#dc)"/>
+  <rect x="2" y="2" width="196" height="196" rx="12" fill="none" stroke="#0db7ed" stroke-width="1" opacity="0.4"/>
+  <text x="100" y="26" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#0db7ed" opacity="0.5" letter-spacing="1.5">docker run --rm</text>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#0899c0"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#0db7ed">[ ^.^ ]</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#0899c0"> &gt; ~ &lt; </text>
+  <line x1="30" y1="166" x2="170" y2="166" stroke="#0db7ed" stroke-width="0.5" opacity="0.2"/>
+  <text x="100" y="181" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#0db7ed" opacity="0.5" letter-spacing="1">containerized</text>
+</svg>

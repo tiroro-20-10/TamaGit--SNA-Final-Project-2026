@@ -1,0 +1,16 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="14" fill="#0a0800"/>
+  <line x1="12"  y1="22"  x2="12"  y2="36"  stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="12"  y1="22"  x2="26"  y2="22"  stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="188" y1="22"  x2="174" y2="22"  stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="188" y1="22"  x2="188" y2="36"  stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="12"  y1="178" x2="12"  y2="164" stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="12"  y1="178" x2="26"  y2="178" stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="188" y1="178" x2="174" y2="178" stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <line x1="188" y1="178" x2="188" y2="164" stroke="#d4a017" stroke-width="1.5" opacity="0.45"/>
+  <text x="100" y="82"  text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#aa7a0a"> /\_/\ </text>
+  <text x="100" y="116" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#d4a017">( B.B )</text>
+  <text x="100" y="150" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="28" fill="#aa7a0a"> &gt; ~ &lt; </text>
+  <line x1="50" y1="164" x2="150" y2="164" stroke="#d4a017" stroke-width="0.5" opacity="0.22"/>
+  <text x="100" y="178" text-anchor="middle" font-family="'Courier New', Courier, monospace" font-size="9" fill="#d4a017" opacity="0.45" letter-spacing="1.5">no bugs in prod</text>
+</svg>
